@@ -4,9 +4,8 @@ from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-VERSION = '0.1.0'
-DESCRIPTION = 'Streamlining the process of multi-prompting LLMs'
-LONG_DESCRIPTION = 'A python package that streamlines the process of multi-prompting LLMs'
+VERSION = '0.1.1'
+DESCRIPTION = 'Streamlining the process of multi-prompting LLMs with chains'
 
 setup(
     name="flowchat",
@@ -21,9 +20,11 @@ setup(
     setup_requires=['pytest-runner', 'flake8'],
     tests_require=['pytest'],
     classifiers=[
-        'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
+        'Programming Language :: Python :: 3',
+        'Topic :: Scientific/Engineering :: Artificial Intelligence',
+        'Topic :: Software Development :: Libraries :: Python Modules'
     ],
     license='MIT',
 )

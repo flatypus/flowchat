@@ -1,9 +1,11 @@
 from .private._private_helpers import _try_function_until_success
-from typing import List, TypedDict, Union, Callable
+from typing import List, TypedDict, Union, Callable, Dict, Literal
 import openai
 import os
 
 Message = TypedDict('Message', {'role': str, 'content': str})
+ResponseFormat = TypedDict(
+    'ResponseFormat', {'response_format': Literal['text', 'json_object']})
 
 
 class Chain:
@@ -21,7 +23,13 @@ class Chain:
         self.prompt_tokens = 0
         self.completion_tokens = 0
 
-    def _ask(self, system: Message, user_messages: List[Message], model: str = None, max_tokens: int = None):
+    def _ask(
+        self,
+        system: Message,
+        user_messages: List[Message],
+        model: str = None,
+        **params
+    ):
         """Ask a question to the chatbot with a system prompt and return the response."""
         if model is None:
             model = self.model
@@ -33,21 +41,16 @@ class Chain:
             *user_messages
         ] if system else user_messages
 
-        completion = openai.chat.completions.create(
-            model=model,
-            messages=messages,
-            max_tokens=max_tokens
-        )
-
         completion = _try_function_until_success(
             openai.chat.completions.create,
             model=model,
             messages=messages,
-            max_tokens=max_tokens
+            **params
         )
 
         if completion is None:
             return None
+
         self.prompt_tokens += completion.usage.prompt_tokens
         self.completion_tokens += completion.usage.completion_tokens
         return completion.choices[0].message.content
@@ -86,12 +89,41 @@ class Chain:
             {"role": "assistant" if assistant else "user", "content": prompt})
         return self
 
-    def pull(self, model: str = None, max_tokens: int = None):
+    def pull(
+        self,
+        model: str = None,
+        frequency_penalty: float | int = None,
+        logit_bias: Dict[str, float | int] = None,
+        max_tokens: float | int = None,
+        n: float | int = None,
+        presence_penalty: float | int = None,
+        response_format: ResponseFormat = None,
+        seed: int = None,
+        stop: str | List[str] = None,
+        temperature: float | int = None,
+        top_p: float | int = None
+    ):
         """Make a request to the LLM and set the response."""
         if model is None:
             model = self.model
-        response = self._ask(
-            self.system, self.user_prompt, model=model, max_tokens=max_tokens)
+
+        params = {
+            'frequency_penalty': frequency_penalty,
+            'logit_bias': logit_bias,
+            'max_tokens': max_tokens,
+            'n': n,
+            'presence_penalty': presence_penalty,
+            'response_format': response_format,
+            'seed': seed,
+            'stop': stop,
+            'temperature': temperature,
+            'top_p': top_p,
+        }
+
+        params = {k: v for k, v in params.items() if v is not None}
+
+        response = self._ask(self.system, self.user_prompt,
+                             model=model, **params)
         self.model_response = response
         return self
 
