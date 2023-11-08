@@ -4,7 +4,7 @@ from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-VERSION = '0.1.1'
+VERSION = '0.1.3'
 DESCRIPTION = 'Streamlining the process of multi-prompting LLMs with chains'
 
 setup(
@@ -12,6 +12,8 @@ setup(
     version=VERSION,
     author="Hinson Chan",
     author_email="<yhc3141@gmail.com>",
+    maintainer="Hinson Chan",
+    maintainer_email="<yhc3141@gmail.com>",
     description=DESCRIPTION,
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -27,4 +29,11 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
     license='MIT',
+    keywords="openai gpt3 gpt-3 gpt4 gpt-4 chatbot ai nlp prompt prompt-engineering toolkit",
+    url="https://github.com/flatypus/flowchat",
+    project_urls={
+        "Repository": "https://github.com/flatypus/flowchat",
+        "Issues": "https://github.com/flatypus/flowchat/issues",
+    },
+
 )

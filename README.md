@@ -8,7 +8,7 @@ Once a chain has been built, a response from the LLM can be pulled with `.pull()
 
 You can optionally log the chain's messages and responses with `.log()`. This is useful for debugging and understanding the chain's behavior. Remember to call `.log()` before `.unhook()` though! Unhooking resets the current chat conversation of the chain.
 
-However, the thing that makes flowchat stand out is the idea of chaining together responses, one chain after another. The chain's previous response can be accessed in the next chain with a lambda function in the next `.link()`. This allows for a more natural conversation flow, and allows for more complex conversations to be built. See examples for how you can use this as well!
+However, the thing that makes flowchat stand out is the idea of chaining together responses, one chain after another. The chain's previous response can be accessed in the next chain with a lambda function in the next `.link()`. This allows for a more natural conversation flow, and allows for more complex conversations to be built. For example, in the examples folder, the chain for creating a natural language cli is actually fairly simple!
 
 ## Installation
 ```bash

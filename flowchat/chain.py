@@ -5,7 +5,7 @@ import os
 
 Message = TypedDict('Message', {'role': str, 'content': str})
 ResponseFormat = TypedDict(
-    'ResponseFormat', {'response_format': Literal['text', 'json_object']})
+    'ResponseFormat', {'type': Literal['text', 'json_object']})
 
 
 class Chain:
