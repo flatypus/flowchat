@@ -33,3 +33,6 @@ chain = (
 )
 
 print(f"FINAL RESULT: {chain.text()}")
+```
+
+This project is under a MIT license.

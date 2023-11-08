@@ -4,7 +4,7 @@ from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-VERSION = '1.0.2'
+VERSION = '0.1.0'
 DESCRIPTION = 'Streamlining the process of multi-prompting LLMs'
 LONG_DESCRIPTION = 'A python package that streamlines the process of multi-prompting LLMs'
 
