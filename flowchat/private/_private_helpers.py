@@ -1,6 +1,5 @@
 from contextlib import contextmanager
 import signal
-import time
 
 
 class TimeoutException(Exception):
@@ -23,6 +22,5 @@ def _try_function_until_success(function: callable, timeout: int = 20, *args, **
     try:
         with _time_limit(timeout):
             return function(*args, **kwargs)
-    except:
-        time.sleep(timeout)
+    except TimeoutException:
         return _try_function_until_success(function, timeout, *args, **kwargs)
