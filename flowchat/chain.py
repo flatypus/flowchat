@@ -1,5 +1,7 @@
+from .autodedent import autodedent
 from .private._private_helpers import _try_function_until_success
-from typing import List, TypedDict, Union, Callable, Dict, Literal
+from typing import List, TypedDict, Union, Callable, Dict, Literal, Any
+import json
 import openai
 import os
 
@@ -93,6 +95,7 @@ class Chain:
         self,
         model: str = None,
         frequency_penalty: float | int = None,
+        json_schema: Any = None,
         logit_bias: Dict[str, float | int] = None,
         max_tokens: float | int = None,
         n: float | int = None,
@@ -111,6 +114,7 @@ class Chain:
             'frequency_penalty': frequency_penalty,
             'logit_bias': logit_bias,
             'max_tokens': max_tokens,
+            'model': model,
             'n': n,
             'presence_penalty': presence_penalty,
             'response_format': response_format,
@@ -122,8 +126,20 @@ class Chain:
 
         params = {k: v for k, v in params.items() if v is not None}
 
-        response = self._ask(self.system, self.user_prompt,
-                             model=model, **params)
+        if json_schema is not None:
+            params['response_format'] = {'type': 'json_object'}
+            params['model'] = 'gpt-4-1106-preview'
+            self.user_prompt[-1]['content'] += autodedent(
+                "You must respond in the following example JSON format:",
+                json.dumps(json_schema, indent=4)
+            )
+
+        response = self._ask(self.system, self.user_prompt, **params)
+        if json_schema is not None:
+            open_bracket = response.rfind('{')
+            close_bracket = response.rfind('}')
+            response = response[open_bracket:close_bracket+1]
+            response = json.loads(response)
         self.model_response = response
         return self
 
@@ -137,11 +153,11 @@ class Chain:
 
     def log(self):
         """Log the chain's system prompt, user prompt, and model response."""
-        print('='*30)
+        print('='*60)
         print(f"System: {self.system}")
         print(f"User: {self.user_prompt}")
         print(f"Text: {self.model_response}")
-        print('='*30)
+        print('='*60)
         print("\n")
         return self
 

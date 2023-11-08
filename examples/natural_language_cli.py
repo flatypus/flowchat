@@ -1,5 +1,4 @@
 from flowchat import Chain, autodedent
-import json
 import os
 import subprocess
 
@@ -24,9 +23,10 @@ def main():
 
         should_exit = (
             Chain()
-            .anchor("Does the user want to exit the CLI? Respond with 'YES' or 'NO'.")
-            .link(f"User's response:\n{user_input}")
-            .pull().unhook().last()
+            .link(autodedent(
+                "Does the user want to exit the CLI? Respond with 'YES' or 'NO'.",
+                user_input
+            )).pull(max_tokens=2).unhook().last()
         )
 
         if should_exit.lower() in ("yes", "y"):
@@ -38,30 +38,22 @@ def main():
             Chain(model="gpt-4-1106-preview")
             .anchor(os_system_context)
             .link(autodedent(
-                f"""
-                The user wants to do this: 
-                {user_input}
-                Suggest a command that can achieve this in one line without user input or interaction.""")
-            ).pull().unhook()
+                "The user wants to do this: ",
+                user_input,
+                "Suggest a command that can achieve this in one line without user input or interaction."
+            )).pull().unhook()
 
             .anchor(os_system_context)
             .link(lambda suggestion: autodedent(
-                f"""
-                Extract ONLY the command from this command desciption:
-                {suggestion}
-
-                Respond in the following example JSON format:
-                {{
-                    "command": "echo 'Hello World!'" 
-                }}
-                """
+                "Extract ONLY the command from this command desciption:",
+                suggestion
             ))
-            .pull(
-                response_format={"type": "json_object"},
-            ).unhook().last()
+            # define a JSON schema to extract the command from the suggestion
+            .pull(json_schema={"command": "echo 'Hello World!'"})
+            .unhook().last()
         )
 
-        command_suggestion = json.loads(command_suggestion_json)["command"]
+        command_suggestion = command_suggestion_json["command"]
         print(f"Suggested command: {command_suggestion}")
 
         # Execute the suggested command and get the result

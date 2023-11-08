@@ -8,14 +8,16 @@ Once a chain has been built, a response from the LLM can be pulled with `.pull()
 
 You can optionally log the chain's messages and responses with `.log()`. This is useful for debugging and understanding the chain's behavior. Remember to call `.log()` before `.unhook()` though! Unhooking resets the current chat conversation of the chain.
 
-However, the thing that makes flowchat stand out is the idea of chaining together responses, one chain after another. The chain's previous response can be accessed in the next chain with a lambda function in the next `.link()`. This allows for a more natural conversation flow, and allows for more complex conversations to be built. For example, in the examples folder, the chain for creating a natural language cli is actually fairly simple!
+However, the thing that makes flowchat stand out is the idea of chaining together responses, one chain after another. The chain's previous response can be accessed in the next chain with a lambda function in the next `.link()`. This allows for a more natural conversation flow, and allows for more complex thought processes to be built. You can also use the `json_schema` argument in `.pull()` to define specific json schema response, and extract data with more control.
+
+Check out these example chains to get started!
 
 ## Installation
 ```bash
 pip install flowchat
 ```
 
-## Usage
+## Example Usage
 ```py
 chain = (
     Chain(model="gpt-3.5-turbo")
@@ -46,7 +48,6 @@ print(f"Result: {chain.last()}") # >> "Artist's Dream Ignites"
 ### Natural Language CLI:
 ```py
 from flowchat import Chain, autodedent
-import json
 import os
 import subprocess
 
@@ -71,9 +72,10 @@ def main():
 
         should_exit = (
             Chain()
-            .anchor("Does the user want to exit the CLI? Respond with 'YES' or 'NO'.")
-            .link(f"User's response:\n{user_input}")
-            .pull().unhook().last()
+            .link(autodedent(
+                "Does the user want to exit the CLI? Respond with 'YES' or 'NO'.",
+                user_input
+            )).pull(max_tokens=2).unhook().last()
         )
 
         if should_exit.lower() in ("yes", "y"):
@@ -85,30 +87,23 @@ def main():
             Chain(model="gpt-4-1106-preview")
             .anchor(os_system_context)
             .link(autodedent(
-                f"""
-                The user wants to do this: 
-                {user_input}
-                Suggest a command that can achieve this in one line without user input or interaction.""")
-            ).pull().unhook()
+                "The user wants to do this: ",
+                user_input,
+                "Suggest a command that can achieve this in one line without user input or interaction."
+            )).pull().unhook()
 
             .anchor(os_system_context)
             .link(lambda suggestion: autodedent(
-                f"""
-                Extract ONLY the command from this command desciption:
-                {suggestion}
-
-                Respond in the following example JSON format:
-                {{
-                    "command": "echo 'Hello World!'" 
-                }}
-                """
+                "Extract ONLY the command from this command desciption:",
+                suggestion
             ))
             .pull(
-                response_format={"type": "json_object"},
+                json_schema={"command": "echo 'Hello World!'"},
+                response_format={"type": "json_object"}
             ).unhook().last()
         )
 
-        command_suggestion = json.loads(command_suggestion_json)["command"]
+        command_suggestion = command_suggestion_json["command"]
         print(f"Suggested command: {command_suggestion}")
 
         # Execute the suggested command and get the result
