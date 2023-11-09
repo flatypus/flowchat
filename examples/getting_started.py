@@ -6,13 +6,15 @@ chain = (
     .link("What is the capital of France?")
     .pull().log().unhook()  # Pull the response, log it, and reset prompts
 
-    .link(lambda desc: f"Extract the city in this statement (one word):\n{desc}")
-    .pull().log().unhook()
+    .link(lambda desc: f"Extract the city in this statement: {desc}")
+    .pull(json_schema={"city": "string"})  # Pull the response and validate it
+    .transform(lambda city_json: city_json["city"])  # Get city from JSON
+    .log().unhook()
 
     .anchor("You are an expert storyteller.")
     .link(lambda city: f"Design a basic three-act point-form short story about {city}.")
     .link("How long should it be?", assistant=True)
-    .link("Around 100 words.")  # Example to show multiple links
+    .link("Around 100 words.")  # (For example) you can make multiple links!
     .pull(max_tokens=512).log().unhook()
 
     .anchor("You are a novelist. Your job is to write a novel about a story that you have heard.")

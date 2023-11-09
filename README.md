@@ -19,17 +19,23 @@ pip install flowchat
 
 ## Example Usage
 ```py
-chain = (
-    Chain(model="gpt-3.5-turbo")
-    .anchor("You are a historian.")
-    .link("What is the capital of France?")
-    .pull().log().unhook()
+from flowchat import Chain
 
-    .link(lambda desc: f"Extract the city in this statement (one word):\n{desc}")
-    .pull().log().unhook()
+chain = (
+    Chain(model="gpt-3.5-turbo")  # default model for all pull() calls
+    .anchor("You are a historian.")  # Set the first system prompt
+    .link("What is the capital of France?")
+    .pull().log().unhook()  # Pull the response, log it, and reset prompts
+
+    .link(lambda desc: f"Extract the city in this statement: {desc}")
+    .pull(json_schema={"city": "string"})  # Pull the response and validate it
+    .transform(lambda city_json: city_json["city"])  # Get city from JSON
+    .log().unhook()
 
     .anchor("You are an expert storyteller.")
     .link(lambda city: f"Design a basic three-act point-form short story about {city}.")
+    .link("How long should it be?", assistant=True)
+    .link("Around 100 words.")  # (For example) you can make multiple links!
     .pull(max_tokens=512).log().unhook()
 
     .anchor("You are a novelist. Your job is to write a novel about a story that you have heard.")
@@ -38,11 +44,10 @@ chain = (
 
     .link(lambda act: f"Summarize this act in around three words:\n{act}")
     .pull(model="gpt-4")
-    .log_tokens()
+    .log_tokens()  # Log token usage of the whole chain
 )
 
 print(f"Result: {chain.last()}") # >> "Artist's Dream Ignites"
-
 ```
 
 ### Natural Language CLI:
@@ -83,7 +88,7 @@ def main():
             break
 
         # Feed the input to flowchat
-        command_suggestion_json = (
+        command_suggestion = (
             Chain(model="gpt-4-1106-preview")
             .anchor(os_system_context)
             .link(autodedent(
@@ -97,13 +102,12 @@ def main():
                 "Extract ONLY the command from this command desciption:",
                 suggestion
             ))
-            .pull(
-                json_schema={"command": "echo 'Hello World!'"},
-                response_format={"type": "json_object"}
-            ).unhook().last()
+            # define a JSON schema to extract the command from the suggestion
+            .pull(json_schema={"command": "echo 'Hello World!'"})
+            .transform(lambda command_json: command_json["command"])
+            .unhook().last()
         )
 
-        command_suggestion = command_suggestion_json["command"]
         print(f"Suggested command: {command_suggestion}")
 
         # Execute the suggested command and get the result

@@ -34,7 +34,7 @@ def main():
             break
 
         # Feed the input to flowchat
-        command_suggestion_json = (
+        command_suggestion = (
             Chain(model="gpt-4-1106-preview")
             .anchor(os_system_context)
             .link(autodedent(
@@ -50,10 +50,10 @@ def main():
             ))
             # define a JSON schema to extract the command from the suggestion
             .pull(json_schema={"command": "echo 'Hello World!'"})
+            .transform(lambda command_json: command_json["command"])
             .unhook().last()
         )
 
-        command_suggestion = command_suggestion_json["command"]
         print(f"Suggested command: {command_suggestion}")
 
         # Execute the suggested command and get the result

@@ -68,6 +68,11 @@ class Chain:
         self.system = {"role": "system", "content": system_prompt}
         return self
 
+    def transform(self, function: Callable[[str], str]):
+        """Transform the chain's model response with a function."""
+        self.model_response = function(self.model_response)
+        return self
+
     def link(self, modifier: Union[Callable[[str], None], str] = None, model: str = None, assistant=False):
         """Modify the chain's user prompt with a function, or just pass in a string to be added to the message list.
 
