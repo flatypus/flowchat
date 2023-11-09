@@ -22,7 +22,7 @@ def main():
         user_input = input("Please enter your command in natural language: ")
 
         should_exit = (
-            Chain()
+            Chain(model="gpt-3.5-turbo")
             .link(autodedent(
                 "Does the user want to exit the CLI? Respond with 'YES' or 'NO'.",
                 user_input
@@ -62,7 +62,7 @@ def main():
 
         if command_output != "":
             description = (
-                Chain().anchor(os_system_context)
+                Chain(model="gpt-3.5-turbo").anchor(os_system_context)
                 .link(f"Describe this output:\n{command_output}")
                 .pull().unhook().last()
             )

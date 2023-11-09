@@ -1,4 +1,6 @@
 from contextlib import contextmanager
+from io import BytesIO
+import base64
 import signal
 
 
@@ -24,3 +26,10 @@ def _try_function_until_success(function: callable, timeout: int = 20, *args, **
             return function(*args, **kwargs)
     except TimeoutException:
         return _try_function_until_success(function, timeout, *args, **kwargs)
+
+
+def _encode_image(image, format_type="PNG"):
+    buffered = BytesIO()
+    image.save(buffered, format=format_type)
+    img_str = base64.b64encode(buffered.getvalue())
+    return f"data:image/png;base64,{img_str.decode('utf-8')}"

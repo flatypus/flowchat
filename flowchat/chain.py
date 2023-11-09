@@ -1,17 +1,22 @@
 from .autodedent import autodedent
-from .private._private_helpers import _try_function_until_success
+from .private._private_helpers import _try_function_until_success, _encode_image
 from typing import List, TypedDict, Union, Callable, Dict, Literal, Any
 import json
 import openai
 import os
 
-Message = TypedDict('Message', {'role': str, 'content': str})
+Message = TypedDict('Message', {'role': str, 'content': str | List[Any]})
 ResponseFormat = TypedDict(
     'ResponseFormat', {'type': Literal['text', 'json_object']})
+ImageFormat = TypedDict('ImageFormat', {
+    'url': str,
+    'format_type': str,
+    'detail': Literal['low', 'high']
+})
 
 
 class Chain:
-    def __init__(self, model: str = "gpt-3.5-turbo", api_key: str = os.environ.get("OPENAI_API_KEY")):
+    def __init__(self, model: str, api_key: str = os.environ.get("OPENAI_API_KEY")):
         super().__init__()
         if not api_key:
             raise Exception(
@@ -57,6 +62,30 @@ class Chain:
         self.completion_tokens += completion.usage.completion_tokens
         return completion.choices[0].message.content
 
+    def _format_images(self, image: str | ImageFormat | Any):
+        if isinstance(image, str):
+            return {"url": image}
+        elif not isinstance(image, dict):
+            # not string or dict so assume PIL image
+            # no specific file format, so default to PNG
+            return {"url": _encode_image(image, "PNG")}
+        else:
+            # we've received an object then; encode the image if necessary
+            if 'url' not in image:
+                raise Exception(
+                    "Image object must have a url property."
+                )
+            if isinstance(image['url'], str):
+                url = image['url']
+            else:
+                file_format = image['format_type'] if 'format_type' in image else "PNG"
+                url = _encode_image(image['url'], file_format)
+
+            return {
+                "url": url,
+                **({"detail": image["detail"]} if "detail" in image else {})
+            }
+
     def unhook(self):
         """Reset the chain's system and user prompt. The previous response is kept."""
         self.system = None
@@ -73,7 +102,7 @@ class Chain:
         self.model_response = function(self.model_response)
         return self
 
-    def link(self, modifier: Union[Callable[[str], None], str] = None, model: str = None, assistant=False):
+    def link(self, modifier: Union[Callable[[str], None], str] = None, model: str = None, assistant=False, images: str | Any | List[str | Any] | ImageFormat = None):
         """Modify the chain's user prompt with a function, or just pass in a string to be added to the message list.
 
         For example:
@@ -92,8 +121,24 @@ class Chain:
             model = self.model
         prompt = modifier(self.model_response) if callable(
             modifier) else modifier
-        self.user_prompt.append(
-            {"role": "assistant" if assistant else "user", "content": prompt})
+
+        role = "assistant" if assistant else "user"
+
+        if images is None:
+            self.user_prompt.append({"role": role, "content": prompt})
+        else:
+            # images accepts a string (url), a PIL image, as well as a specific typed dict, or a list of any of these
+            images = [images] if not isinstance(images, list) else images
+            images = [
+                {"type": "image_url", "image_url": self._format_images(image)}
+                for image in images
+            ]
+            self.user_prompt.append(
+                {"role": role, "content": [
+                    {"type": "text", "text": prompt},
+                    *images
+                ]}
+            )
         return self
 
     def pull(

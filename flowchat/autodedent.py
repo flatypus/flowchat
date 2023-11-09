@@ -17,5 +17,5 @@ def autodedent(*text_lines) -> str:
         "Suggest a comment that describes what this code does."
     )
     """
-    text_lines = [i if type(i) is str else str(i) for i in text_lines]
+    text_lines = [i if isinstance(i, str) else str(i) for i in text_lines]
     return dedent('\n'.join(text_lines)).strip("\n")
