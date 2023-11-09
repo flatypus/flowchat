@@ -16,11 +16,17 @@ ImageFormat = TypedDict('ImageFormat', {
 
 
 class Chain:
-    def __init__(self, model: str, api_key: str = os.environ.get("OPENAI_API_KEY")):
+    def __init__(self, model: str, api_key: str = None, environ_key="OPENAI_API_KEY"):
         super().__init__()
+
+        if api_key is None:
+            api_key = os.environ.get(environ_key)
         if not api_key:
-            raise Exception(
-                "OpenAI API key not found. Please set the OPENAI_API_KEY environment variable.")
+            raise ValueError(
+                "OpenAI API key not found. Please set the OPENAI_API_KEY environment variable, "
+                "pass in an api_key parameter, or set the environ_key parameter to the environment "
+                "variable that contains your API key."
+            )
         openai.api_key = api_key
 
         self.model = model
@@ -63,6 +69,7 @@ class Chain:
         return completion.choices[0].message.content
 
     def _format_images(self, image: str | ImageFormat | Any):
+        """Format whatever image format we receive into the specific format that OpenAI's API expects."""
         if isinstance(image, str):
             return {"url": image}
         elif not isinstance(image, dict):
@@ -180,11 +187,12 @@ class Chain:
             params['response_format'] = {'type': 'json_object'}
             params['model'] = 'gpt-4-1106-preview'
             self.user_prompt[-1]['content'] += autodedent(
-                "You must respond in the following example JSON format:",
+                "You must respond in the following example JSON format. Remember to enclose the entire JSON object in curly braces:",
                 json.dumps(json_schema, indent=4)
             )
 
         response = self._ask(self.system, self.user_prompt, **params)
+
         if json_schema is not None:
             open_bracket = response.rfind('{')
             close_bracket = response.rfind('}')

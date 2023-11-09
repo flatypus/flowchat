@@ -17,6 +17,9 @@ Check out these example chains to get started!
 pip install flowchat
 ```
 
+## Setup
+Put your OpenAI API key in your environment variable file (eg. .env) as `OPENAI_API_KEY=sk-xxxxxx`. If you're using this as part of another project with a different name for the key (like `OPENAI_KEY` or something), simply pass that in `Chain(environ_key="OPENAI_KEY")`. Alternatively, you can simply pass the key itself when initializing the chain: `Chain(api_key="sk-xxxxxx")`.
+
 ## Example Usage
 ```py
 from flowchat import Chain
@@ -51,6 +54,9 @@ print(f"Result: {chain.last()}") # >> "Artist's Dream Ignites"
 ```
 
 ### Natural Language CLI:
+
+This is the short version that doesn't check if the command is possible to start. If you want to see a longer example with **nested chains**, check out the [full version](/examples/natural_language_cli.py).
+
 ```py
 from flowchat import Chain, autodedent
 import os
