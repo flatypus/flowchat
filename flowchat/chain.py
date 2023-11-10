@@ -40,12 +40,9 @@ class Chain:
         self,
         system: Message,
         user_messages: List[Message],
-        model: str = None,
         **params
     ):
         """Ask a question to the chatbot with a system prompt and return the response."""
-        if model is None:
-            model = self.model
         if not user_messages:
             return None
 
@@ -56,7 +53,6 @@ class Chain:
 
         completion = _try_function_until_success(
             openai.chat.completions.create,
-            model=model,
             messages=messages,
             **params
         )
@@ -126,6 +122,7 @@ class Chain:
         """
         if model is None:
             model = self.model
+
         prompt = modifier(self.model_response) if callable(
             modifier) else modifier
 
