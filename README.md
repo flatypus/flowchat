@@ -2,13 +2,14 @@
 
 A Python library for building clean and efficient multi-step prompt chains. It is built on top of [OpenAI's Python API](https://github.com/openai/openai-python).
 
-Flowchat is designed around the idea of a *chain*. Each chain can start with a system prompt `.anchor()`, and then add chain links of messages with `.link()`. 
 
-Once a chain has been built, a response from the LLM can be pulled with `.pull()`.
+Flowchat is designed around the idea of a *chain*. Start the chain with `.anchor()`, which contains a system prompt. Use `.link()` to add additional messages.
 
-You can optionally log the chain's messages and responses with `.log()`. This is useful for debugging and understanding the chain's behavior. Remember to call `.log()` before `.unhook()` though! Unhooking resets the current chat conversation of the chain.
+After providing all the information required with `.anchor()` and `.link()`, the response can be stored to a result variable using `.pull()`. You can use `.pull(json_schema={"city": "string"})` to define a specific output response scheme. 
 
-However, the thing that makes flowchat stand out is the idea of chaining together responses, one chain after another. The chain's previous response can be accessed in the next chain with a lambda function in the next `.link()`. This allows for a more natural conversation flow, and allows for more complex thought processes to be built. You can also use the `json_schema` argument in `.pull()` to define specific json schema response, and extract data with more control.
+When you're done one stage/system prompt of your chain, you can optionally log the chain's messages and responses with `.log()` and reset the current chat conversation with `.unhook()`.
+
+When you're finished with the entire chain, use `.last()` to get the last response .
 
 Check out these example chains to get started!
 

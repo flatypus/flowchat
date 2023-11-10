@@ -40,7 +40,6 @@ class Chain:
     @retry(delay=1)
     def _query_api(self, function: callable, *args, **kwargs):
         """Query the API."""
-        print("Retrying")
         return function(*args, **kwargs)
 
     def _ask(
