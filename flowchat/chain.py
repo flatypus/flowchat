@@ -1,6 +1,7 @@
 from .autodedent import autodedent
-from .private._private_helpers import _try_function_until_success, _encode_image
+from .private._private_helpers import _encode_image
 from typing import List, TypedDict, Union, Callable, Dict, Literal, Any
+from retry import retry
 import json
 import openai
 import os
@@ -36,6 +37,12 @@ class Chain:
         self.prompt_tokens = 0
         self.completion_tokens = 0
 
+    @retry(delay=1)
+    def _query_api(self, function: callable, *args, **kwargs):
+        """Query the API."""
+        print("Retrying")
+        return function(*args, **kwargs)
+
     def _ask(
         self,
         system: Message,
@@ -51,7 +58,7 @@ class Chain:
             *user_messages
         ] if system else user_messages
 
-        completion = _try_function_until_success(
+        completion = self._query_api(
             openai.chat.completions.create,
             messages=messages,
             **params
