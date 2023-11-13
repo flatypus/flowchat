@@ -11,7 +11,7 @@ When you're done one stage of your chain, you can log the chain's messages and r
 
 Instead, the idea of 'chaining' is that you can use the response from the previous stage in the next stage. For example, when using `link` in the second stage, you can use the response from the first stage by using a lambda function: `.link(lambda response: f"Previous response: {response}")`. 
 
-Furthermore, you can use `.transform()` to transform the response from the previous stage into something else. For example, you can use `.transform(lambda response: response["city"])` to get the city from the response JSON object, or even map over a response list with a nested chain! You'll see more examples of this in the [Natural Language CLI](#natural-language-cli) example.
+Furthermore, you can use `.transform()` to transform the response from the previous stage into something else. For example, you can use `.transform(lambda response: response["city"])` to get the city from the response JSON object, or even map over a response list with a nested chain! You'll see more ways to use these functions in the [examples](/examples/natural_language_cli.py).
 
 When you're finished with the entire chain, simply use `.last()` to return the last response.
 
