@@ -5,11 +5,15 @@ A Python library for building clean and efficient multi-step prompt chains. It i
 
 Flowchat is designed around the idea of a *chain*. Start the chain with `.anchor()`, which contains a system prompt. Use `.link()` to add additional messages.
 
-After providing all the information required with `.anchor()` and `.link()`, the response can be stored to a result variable using `.pull()`. You can use `.pull(json_schema={"city": "string"})` to define a specific output response scheme. 
+To get a response from the LLM, use `.pull()`; additionally, you can use `.pull(json_schema={"city": "string"})` to define a specific output response schema. This will validate the response and return a JSON object with the response. The subsequent response will be stored in an internal response variable.
 
-When you're done one stage/system prompt of your chain, you can optionally log the chain's messages and responses with `.log()` and reset the current chat conversation with `.unhook()`.
+When you're done one stage of your chain, you can log the chain's messages and responses with `.log()` and reset the current chat conversation messages with `.unhook()`. Unhooking **does not** reset the internal response variable. 
 
-When you're finished with the entire chain, use `.last()` to get the last response .
+Instead, the idea of 'chaining' is that you can use the response from the previous stage in the next stage. For example, when using `link` in the second stage, you can use the response from the first stage by using a lambda function: `.link(lambda response: f"Previous response: {response}")`. 
+
+Furthermore, you can use `.transform()` to transform the response from the previous stage into something else. For example, you can use `.transform(lambda response: response["city"])` to get the city from the response JSON object, or even map over a response list with a nested chain! You'll see more examples of this in the [Natural Language CLI](#natural-language-cli) example.
+
+When you're finished with the entire chain, simply use `.last()` to return the last response.
 
 Check out these example chains to get started!
 
