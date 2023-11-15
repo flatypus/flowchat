@@ -1,7 +1,8 @@
 from .autodedent import autodedent
 from .private._private_helpers import _encode_image
-from typing import List, TypedDict, Union, Callable, Dict, Literal, Any
 from retry import retry
+from typing import List, TypedDict, Union, Callable, Dict, Literal, Any
+from wrapt_timeout_decorator import timeout
 import json
 import openai
 import os
@@ -38,14 +39,17 @@ class Chain:
         self.completion_tokens = 0
 
     @retry(delay=1)
-    def _query_api(self, function: callable, *args, **kwargs):
-        """Query the API."""
-        return function(*args, **kwargs)
+    def _query_api(self, function: callable, *args, max_query_time=None, **kwargs):
+        """Query the API for max_query_time seconds, and if it times out, it will retry."""
+        timeouted_function = timeout(
+            dec_timeout=max_query_time, use_signals=False)(function)
+        return timeouted_function(*args, **kwargs)
 
     def _ask(
         self,
         system: Message,
         user_messages: List[Message],
+        max_query_time=None,
         **params
     ):
         """Ask a question to the chatbot with a system prompt and return the response."""
@@ -60,6 +64,7 @@ class Chain:
         completion = self._query_api(
             openai.chat.completions.create,
             messages=messages,
+            max_query_time=max_query_time,
             **params
         )
 
@@ -157,6 +162,7 @@ class Chain:
         frequency_penalty: float | int = None,
         json_schema: Any = None,
         logit_bias: Dict[str, float | int] = None,
+        max_query_time=None,
         max_tokens: float | int = None,
         n: float | int = None,
         presence_penalty: float | int = None,
@@ -164,7 +170,7 @@ class Chain:
         seed: int = None,
         stop: str | List[str] = None,
         temperature: float | int = None,
-        top_p: float | int = None
+        top_p: float | int = None,
     ):
         """Make a request to the LLM and set the response."""
         if model is None:
@@ -173,6 +179,7 @@ class Chain:
         params = {
             'frequency_penalty': frequency_penalty,
             'logit_bias': logit_bias,
+            'max_query_time': max_query_time,
             'max_tokens': max_tokens,
             'model': model,
             'n': n,
