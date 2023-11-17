@@ -40,15 +40,38 @@ class Chain:
 
     @retry(delay=1)
     def _query_api(self, function: callable, *args, max_query_time=None, **kwargs):
-        """Query the API for max_query_time seconds, and if it times out, it will retry."""
+        """Call the API for max_query_time seconds, and if it times out, it will retry."""
         timeouted_function = timeout(
             dec_timeout=max_query_time, use_signals=False)(function)
         return timeouted_function(*args, **kwargs)
+
+    @retry(delay=1)
+    def _try_query_and_parse(self, function: callable, json_schema, *args, max_query_time=None, **kwargs):
+        """Query and try to parse the response, and if it fails, it will retry."""
+        completion = self._query_api(
+            function, *args, max_query_time=max_query_time, **kwargs)
+
+        if completion is None:
+            return None
+
+        message = completion.choices[0].message.content
+
+        if not json_schema is None:
+            open_bracket = message.rfind('{')
+            close_bracket = message.rfind('}')
+            message = message[open_bracket:close_bracket+1]
+            message = json.loads(message)
+
+        self.prompt_tokens += completion.usage.prompt_tokens
+        self.completion_tokens += completion.usage.completion_tokens
+
+        return message
 
     def _ask(
         self,
         system: Message,
         user_messages: List[Message],
+        json_schema: Any = None,
         max_query_time=None,
         **params
     ):
@@ -61,19 +84,15 @@ class Chain:
             *user_messages
         ] if system else user_messages
 
-        completion = self._query_api(
+        message = self._try_query_and_parse(
             openai.chat.completions.create,
+            json_schema=json_schema,
             messages=messages,
             max_query_time=max_query_time,
             **params
         )
 
-        if completion is None:
-            return None
-
-        self.prompt_tokens += completion.usage.prompt_tokens
-        self.completion_tokens += completion.usage.completion_tokens
-        return completion.choices[0].message.content
+        return message
 
     def _format_images(self, image: str | ImageFormat | Any):
         """Format whatever image format we receive into the specific format that OpenAI's API expects."""
@@ -201,13 +220,11 @@ class Chain:
                 json.dumps(json_schema, indent=4)
             )
 
-        response = self._ask(self.system, self.user_prompt, **params)
+        response = self._ask(
+            self.system, self.user_prompt,
+            json_schema, **params
+        )
 
-        if json_schema is not None:
-            open_bracket = response.rfind('{')
-            close_bracket = response.rfind('}')
-            response = response[open_bracket:close_bracket+1]
-            response = json.loads(response)
         self.model_response = response
         return self
 
