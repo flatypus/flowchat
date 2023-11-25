@@ -21,8 +21,24 @@ class Chain:
     def __init__(self, model: str, api_key: str = None, environ_key="OPENAI_API_KEY"):
         super().__init__()
 
+        if type(model) is not str:
+            raise TypeError(
+                f"Model argument must be a string, not {type(model)}"
+            )
+
+        if api_key is not None and type(api_key) is not str:
+            raise TypeError(
+                f"API key argument must be a string, not {type(api_key)}"
+            )
+
+        if type(environ_key) is not str:
+            raise TypeError(
+                f"Environment key argument must be a string, not {type(environ_key)}"
+            )
+
         if api_key is None:
             api_key = os.environ.get(environ_key)
+
         if not api_key:
             raise ValueError(
                 "OpenAI API key not found. Please set the OPENAI_API_KEY environment variable, "
@@ -127,11 +143,21 @@ class Chain:
 
     def anchor(self, system_prompt: str):
         """Set the chain's system prompt."""
+        if not isinstance(system_prompt, str):
+            raise TypeError(
+                f"System prompt must be a string, not {type(system_prompt)}"
+            )
+
         self.system = {"role": "system", "content": system_prompt}
         return self
 
     def transform(self, function: Callable[[str], str]):
         """Transform the chain's model response with a function."""
+        if not callable(function):
+            raise TypeError(
+                f"Transform function must be callable, not {type(function)}"
+            )
+
         self.model_response = function(self.model_response)
         return self
 
@@ -152,6 +178,11 @@ class Chain:
         """
         if model is None:
             model = self.model
+
+        if not callable(modifier) and not isinstance(modifier, str):
+            raise TypeError(
+                f"Modifier must be callable or string, not {type(modifier)}"
+            )
 
         prompt = modifier(self.model_response) if callable(
             modifier) else modifier
@@ -213,6 +244,11 @@ class Chain:
         params = {k: v for k, v in params.items() if v is not None}
 
         if json_schema is not None:
+            if not isinstance(json_schema, dict):
+                raise TypeError(
+                    f"JSON schema must be a dictionary, not {type(json_schema)}"
+                )
+
             params['response_format'] = {'type': 'json_object'}
             params['model'] = 'gpt-4-1106-preview'
             self.user_prompt[-1]['content'] += autodedent(
