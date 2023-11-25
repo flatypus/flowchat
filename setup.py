@@ -20,7 +20,7 @@ setup(
     packages=find_packages(),
     install_requires=["openai", "retry", "wrapt_timeout_decorator"],
     setup_requires=['pytest-runner', 'flake8'],
-    tests_require=['pytest'],
+    tests_require=['pytest', 'pytest-env'],
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
