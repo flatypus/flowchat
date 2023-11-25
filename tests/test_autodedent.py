@@ -59,3 +59,9 @@ class TestAutodedent:
         # Test with non-string
         test_string = 1
         assert autodedent(test_string) == "1"
+
+    def test_with_multiple_non_strings(self):
+        # Test with multiple non-strings
+        test_string = 1
+        test_string2 = 2
+        assert autodedent(test_string, test_string2) == "1\n2"
