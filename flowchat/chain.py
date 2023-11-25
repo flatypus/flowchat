@@ -62,13 +62,18 @@ class Chain:
         return timeouted_function(*args, **kwargs)
 
     @retry(delay=1)
-    def _try_query_and_parse(self, function: callable, json_schema, *args, max_query_time=None, **kwargs):
+    def _try_query_and_parse(self, function: callable, json_schema, *args, plain_text_stream:  bool = False,
+
+                             max_query_time=None, **kwargs):
         """Query and try to parse the response, and if it fails, it will retry."""
         completion = self._query_api(
             function, *args, max_query_time=max_query_time, **kwargs)
 
         if completion is None:
             return None
+
+        if kwargs.get('stream', False):
+            return completion
 
         message = completion.choices[0].message.content
 
@@ -263,6 +268,51 @@ class Chain:
 
         self.model_response = response
         return self
+
+    def stream(
+        self,
+        plain_text_stream: bool = False,
+        model: str = None,
+        frequency_penalty: float | int = None,
+        logit_bias: Dict[str, float | int] = None,
+        max_query_time=None,
+        max_tokens: float | int = None,
+        n: float | int = None,
+        presence_penalty: float | int = None,
+        seed: int = None,
+        stop: str | List[str] = None,
+        temperature: float | int = None,
+        top_p: float | int = None,
+    ):
+        """Returns a generator that yields responses from the LLM."""
+        if model is None:
+            model = self.model
+
+        params = {
+            'frequency_penalty': frequency_penalty,
+            'logit_bias': logit_bias,
+            'max_query_time': max_query_time,
+            'max_tokens': max_tokens,
+            'model': model,
+            'n': n,
+            'presence_penalty': presence_penalty,
+            'seed': seed,
+            'stop': stop,
+            'temperature': temperature,
+            'top_p': top_p,
+            'stream': True
+        }
+
+        params = {k: v for k, v in params.items() if v is not None}
+
+        if not plain_text_stream:
+            return self._ask(
+                self.system, self.user_prompt,
+                None, **params
+            )
+
+        return (response.choices[0].delta.content
+                for response in self._ask(self.system, self.user_prompt, None, **params))
 
     def last(self) -> str:
         """Return the chain's last model response."""
