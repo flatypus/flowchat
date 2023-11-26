@@ -1,22 +1,25 @@
-# flowchat
+# flowchat - clean, readable, logical code.
 
 A Python library for building clean and efficient multi-step prompt chains. It is built on top of [OpenAI's Python API](https://github.com/openai/openai-python).
 
-## ...why flowchat?
+![why](https://github.com/flatypus/flowchat/assets/68029599/969968aa-6250-4cc1-bb73-2a0930270fbf)
 
+## What is Flowchat?
 Flowchat is designed around the idea of a *chain*. Start the chain with `.anchor()`, which contains a system prompt. Use `.link()` to add additional messages.
 
-To get a response from the LLM, use `.pull()`; additionally, you can use `.pull(json_schema={"city": "string"})` to define a specific output response schema. This will validate the response and return a JSON object with the response. The subsequent response will be stored in an internal response variable.
+To get a response from the LLM, use `.pull()`. Additionally, you can use `.pull(json_schema={"city": "string"})` to define a specific output response schema. This will validate the response and return a JSON object with the response. The subsequent response will be stored in an internal response variable.
 
-When you're done one stage of your chain, you can log the chain's messages and responses with `.log()` and reset the current chat conversation messages with `.unhook()`. Unhooking **does not** reset the internal response variable. 
+When you're done one stage of your chain, you can log the chain's messages and responses with `.log()` and reset the current chat conversation messages with `.unhook()`.
+Unhooking **does not** reset the internal response variable. 
 
-Instead, the idea of 'chaining' is that you can use the response from the previous stage in the next stage. For example, when using `link` in the second stage, you can use the response from the first stage by using a lambda function: `.link(lambda response: f"Previous response: {response}")`. 
+Instead, the idea of 'chaining' is that you can use the response from the previous stage in the next stage.
+For example, when using `link` in the second stage, you can use the response from the first stage by using a lambda function: `.link(lambda response: f"Previous response: {response}")`. 
 
-Furthermore, you can use `.transform()` to transform the response from the previous stage into something else. For example, you can use `.transform(lambda response: response["city"])` to get the city from the response JSON object, or even map over a response list with a nested chain! You'll see more ways to use these functions in the [examples](/examples/natural_language_cli.py).
+You can use `.transform()` to transform the response from the previous stage into something else. For example, you can use `.transform(lambda response: response["city"])` to get the city from the response JSON object, or even map over a response list with a nested chain! You'll see more ways to use these functions in the [examples](/examples/natural_language_cli.py).
 
 When you're finished with the entire chain, simply use `.last()` to return the last response.
 
-Check out these example chains to get started!
+Check out these [example chains](/examples) to get started!
 
 ## Installation
 ```bash
