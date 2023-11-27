@@ -171,7 +171,7 @@ class Chain:
         self.model_response = function(self.model_response)
         return self
 
-    def link(self, modifier: Union[Callable[[str], None], str] = None, model: str = None, assistant=False, images: str | Any | List[str | Any] | ImageFormat = None):
+    def link(self, modifier: Union[Callable[[str], None], str], model: str = None, assistant=False, images: str | Any | List[str | Any] | ImageFormat = None):
         """Modify the chain's user prompt with a function, or just pass in a string to be added to the message list.
 
         For example:
@@ -192,6 +192,11 @@ class Chain:
         if not callable(modifier) and not isinstance(modifier, str):
             raise TypeError(
                 f"Modifier must be callable or string, not {type(modifier)}"
+            )
+
+        if isinstance(modifier, str) and modifier == "":
+            raise ValueError(
+                "Modifier cannot be an empty string."
             )
 
         prompt = modifier(self.model_response) if callable(
