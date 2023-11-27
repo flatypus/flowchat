@@ -119,3 +119,9 @@ class TestChaining:
         chain.log_tokens()
         captured = capsys.readouterr()
         assert captured.out == f"Prompt tokens: 1\nCompletion tokens: 2\nTotal tokens: 3\n"
+
+    def test_empty_link(self):
+        # test that the link method raises a ValueError when called with no arguments
+        chain = Chain(model="gpt-3.5-turbo")
+        with pytest.raises(ValueError):
+            chain.link("")
