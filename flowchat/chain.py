@@ -8,7 +8,8 @@ import openai
 import os
 import logging
 
-logging.basicConfig(level=logging.INFO, errors='raise')
+logging.basicConfig(level=logging.WARNING,
+                    format='[%(asctime)s] %(levelname)s: %(message)s')
 Message = TypedDict('Message', {'role': str, 'content': str | List[Any]})
 ResponseFormat = TypedDict(
     'ResponseFormat', {'type': Literal['text', 'json_object']})
