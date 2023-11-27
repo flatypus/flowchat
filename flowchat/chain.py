@@ -6,7 +6,9 @@ from wrapt_timeout_decorator import timeout
 import json
 import openai
 import os
+import logging
 
+logging.basicConfig(level=logging.INFO, errors='raise')
 Message = TypedDict('Message', {'role': str, 'content': str | List[Any]})
 ResponseFormat = TypedDict(
     'ResponseFormat', {'type': Literal['text', 'json_object']})
@@ -54,17 +56,15 @@ class Chain:
         self.prompt_tokens = 0
         self.completion_tokens = 0
 
-    @retry(delay=1)
+    @retry(delay=1, logger=logging)
     def _query_api(self, function: callable, *args, max_query_time=None, **kwargs):
         """Call the API for max_query_time seconds, and if it times out, it will retry."""
         timeouted_function = timeout(
             dec_timeout=max_query_time, use_signals=False)(function)
         return timeouted_function(*args, **kwargs)
 
-    @retry(delay=1)
-    def _try_query_and_parse(self, function: callable, json_schema, *args, plain_text_stream:  bool = False,
-
-                             max_query_time=None, **kwargs):
+    @retry(delay=1, logger=logging)
+    def _try_query_and_parse(self, function: callable, json_schema, *args, max_query_time=None, **kwargs):
         """Query and try to parse the response, and if it fails, it will retry."""
         completion = self._query_api(
             function, *args, max_query_time=max_query_time, **kwargs)
@@ -81,7 +81,12 @@ class Chain:
             open_bracket = message.rfind('{')
             close_bracket = message.rfind('}')
             message = message[open_bracket:close_bracket+1]
-            message = json.loads(message)
+            try:
+                message = json.loads(message)
+            except json.JSONDecodeError:
+                raise Exception(
+                    "Response was not in the expected JSON format. Please try again. Check that you haven't accidentally lowered the max_tokens parameter so that the response is truncated."
+                )
 
         self.prompt_tokens += completion.usage.prompt_tokens
         self.completion_tokens += completion.usage.completion_tokens
