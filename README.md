@@ -1,5 +1,9 @@
 # flowchat - clean, readable, logical code.
 
+[![PyPI version](https://img.shields.io/pypi/v/flowchat.svg)](https://pypi.org/project/flowchat/)
+[![Licence](https://img.shields.io/pypi/l/flowchat?logoColor=blue)](LICENSE.txt)
+![Downloads](https://img.shields.io/pypi/dm/flowchat?logoColor=blue)
+
 A Python library for building clean and efficient multi-step prompt chains. It is built on top of [OpenAI's Python API](https://github.com/openai/openai-python).
 
 ![why](https://github.com/flatypus/flowchat/assets/68029599/969968aa-6250-4cc1-bb73-2a0930270fbf)
