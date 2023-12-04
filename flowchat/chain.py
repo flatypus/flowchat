@@ -79,7 +79,7 @@ class Chain:
         message = completion.choices[0].message.content
 
         if not json_schema is None:
-            open_bracket = message.rfind('{')
+            open_bracket = message.find('{')
             close_bracket = message.rfind('}')
             message = message[open_bracket:close_bracket+1]
             try:
