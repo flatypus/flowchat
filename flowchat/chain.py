@@ -57,14 +57,12 @@ class Chain:
         self.prompt_tokens = 0
         self.completion_tokens = 0
 
-    @retry(delay=1, logger=logging)
     def _query_api(self, function: callable, *args, max_query_time=None, **kwargs):
         """Call the API for max_query_time seconds, and if it times out, it will retry."""
         timeouted_function = timeout(
             dec_timeout=max_query_time, use_signals=False)(function)
         return timeouted_function(*args, **kwargs)
 
-    @retry(delay=1, logger=logging)
     def _try_query_and_parse(self, function: callable, json_schema, *args, max_query_time=None, **kwargs):
         """Query and try to parse the response, and if it fails, it will retry."""
         completion = self._query_api(
@@ -100,6 +98,7 @@ class Chain:
         user_messages: List[Message],
         json_schema: Any = None,
         max_query_time=None,
+        tries=-1,
         **params
     ):
         """Ask a question to the chatbot with a system prompt and return the response."""
@@ -111,7 +110,7 @@ class Chain:
             *user_messages
         ] if system else user_messages
 
-        message = self._try_query_and_parse(
+        message = retry(delay=1, logger=logging, tries=tries)(self._try_query_and_parse)(
             openai.chat.completions.create,
             json_schema=json_schema,
             messages=messages,
@@ -237,6 +236,7 @@ class Chain:
         stop: str | List[str] = None,
         temperature: float | int = None,
         top_p: float | int = None,
+        tries: int = -1
     ):
         """Make a request to the LLM and set the response."""
         if model is None:
@@ -274,7 +274,7 @@ class Chain:
 
         response = self._ask(
             self.system, self.user_prompt,
-            json_schema, **params
+            json_schema, tries=tries, **params
         )
 
         self.model_response = response
