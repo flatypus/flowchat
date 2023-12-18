@@ -28,7 +28,7 @@ class TestChain(unittest.TestCase):
         }
         self.chain._ask.assert_called_with(
             self.chain.system, self.chain.user_prompt,
-            None, **expected_params
+            None, **expected_params, tries=-1
         )
 
     def test_pull_with_json_schema(self):
