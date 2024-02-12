@@ -176,14 +176,16 @@ class Chain:
 
         For example:
         ```
-        chain = (Chain()
-                    .anchor("Hello!")
-                    .link("How are you?")
-                    .pull().unhook()
+        chain = (
+          Chain()
+          .anchor("Hello!")
+          .link("How are you?")
+          .pull().unhook()
 
-                    .link(lambda response: f"What emotions characterize this response? {response}")
-                    .pull()
-                    .log())
+          .link(lambda response: f"What emotions characterize this response? {response}")
+          .pull()
+          .log()
+        )
         ```
         """
         if model is None:
