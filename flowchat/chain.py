@@ -1,12 +1,13 @@
 from .autodedent import autodedent
-from .private._private_helpers import _encode_image
+from .private._private_helpers import encode_image
 from retry import retry
-from typing import List, TypedDict, Union, Callable, Dict, Literal, Any
-from wrapt_timeout_decorator import timeout
+from typing import List, Optional, TypedDict, Union, Callable, Dict, Literal, Any
+from typing_extensions import Unpack, NotRequired
+from wrapt_timeout_decorator.wrapt_timeout_decorator import timeout
 import json
+import logging
 import openai
 import os
-import logging
 
 logging.basicConfig(level=logging.WARNING,
                     format='[%(asctime)s] %(levelname)s: %(message)s')
@@ -20,8 +21,23 @@ ImageFormat = TypedDict('ImageFormat', {
 })
 
 
+# use total=False to make fields non-required
+class RequestParams(TypedDict, total=False):
+    model: NotRequired[str]
+    frequency_penalty: NotRequired[Union[float, int]]
+    logit_bias: NotRequired[Dict[str, Union[float, int]]]
+    max_tokens: NotRequired[Union[float, int]]
+    n: NotRequired[Union[float, int]]
+    presence_penalty: NotRequired[Union[float, int]]
+    response_format: NotRequired[ResponseFormat]
+    seed: NotRequired[int]
+    stop: NotRequired[Union[str, List[str]]]
+    temperature: NotRequired[Union[float, int]]
+    top_p: NotRequired[Union[float, int]]
+
+
 class Chain:
-    def __init__(self, model: str, api_key: str = None, environ_key="OPENAI_API_KEY"):
+    def __init__(self, model: str, api_key: str = "", environ_key: str = "OPENAI_API_KEY"):
         super().__init__()
 
         if type(model) is not str:
@@ -29,7 +45,7 @@ class Chain:
                 f"Model argument must be a string, not {type(model)}"
             )
 
-        if api_key is not None and type(api_key) is not str:
+        if api_key != "" and type(api_key) is not str:
             raise TypeError(
                 f"API key argument must be a string, not {type(api_key)}"
             )
@@ -39,8 +55,10 @@ class Chain:
                 f"Environment key argument must be a string, not {type(environ_key)}"
             )
 
-        if api_key is None:
-            api_key = os.environ.get(environ_key)
+        if api_key == "":
+            env_api_key = os.environ.get(environ_key)
+            if env_api_key is not None:
+                api_key = env_api_key
 
         if not api_key:
             raise ValueError(
@@ -51,19 +69,19 @@ class Chain:
         openai.api_key = api_key
 
         self.model = model
-        self.system = None
-        self.user_prompt = []
+        self.system: Message | None = None
+        self.user_prompt: List[Message] = []
         self.model_response = None
         self.prompt_tokens = 0
         self.completion_tokens = 0
 
-    def _query_api(self, function: callable, *args, max_query_time=None, **kwargs):
+    def _query_api(self, function: Callable[[Any], Any], *args: Any, max_query_time: int | None = None, **kwargs: Any):
         """Call the API for max_query_time seconds, and if it times out, it will retry."""
         timeouted_function = timeout(
             dec_timeout=max_query_time, use_signals=False)(function)
         return timeouted_function(*args, **kwargs)
 
-    def _try_query_and_parse(self, function: callable, json_schema, *args, max_query_time=None, **kwargs):
+    def _try_query_and_parse(self, function: Callable[[Any], Any], json_schema: Any, *args: Any, max_query_time: int | None = None, stream: bool = False, **kwargs: Any):
         """Query and try to parse the response, and if it fails, it will retry."""
         completion = self._query_api(
             function, *args, max_query_time=max_query_time, **kwargs)
@@ -71,7 +89,7 @@ class Chain:
         if completion is None:
             return None
 
-        if kwargs.get('stream', False):
+        if stream:
             return completion
 
         message = completion.choices[0].message.content
@@ -94,27 +112,27 @@ class Chain:
 
     def _ask(
         self,
-        system: Message,
+        system: Message | None,
         user_messages: List[Message],
-        json_schema: Any = None,
-        max_query_time=None,
-        tries=-1,
-        **params
-    ):
+        json_schema: Optional[dict[Any, Any]] = None,
+        max_query_time: Optional[int] = None,
+        tries: int = -1,
+        stream: bool = False,
+        **params: Any
+    ) -> Any:
         """Ask a question to the chatbot with a system prompt and return the response."""
-        if not user_messages:
-            return None
 
         messages = [
             system,
             *user_messages
         ] if system else user_messages
 
-        message = retry(delay=1, logger=logging, tries=tries)(self._try_query_and_parse)(
-            openai.chat.completions.create,
+        message = retry(delay=1, logger=logging.getLogger(), tries=tries)(self._try_query_and_parse)(
+            openai.chat.completions.create,  # type: ignore
             json_schema=json_schema,
             messages=messages,
             max_query_time=max_query_time,
+            stream=stream,
             **params
         )
 
@@ -127,18 +145,14 @@ class Chain:
         elif not isinstance(image, dict):
             # not string or dict so assume PIL image
             # no specific file format, so default to PNG
-            return {"url": _encode_image(image, "PNG")}
+            return {"url": encode_image(image, "PNG")}
         else:
             # we've received an object then; encode the image if necessary
             if 'url' not in image:
                 raise Exception(
                     "Image object must have a url property."
                 )
-            if isinstance(image['url'], str):
-                url = image['url']
-            else:
-                file_format = image['format_type'] if 'format_type' in image else "PNG"
-                url = _encode_image(image['url'], file_format)
+            url = image['url']
 
             return {
                 "url": url,
@@ -153,48 +167,42 @@ class Chain:
 
     def anchor(self, system_prompt: str):
         """Set the chain's system prompt."""
-        if not isinstance(system_prompt, str):
-            raise TypeError(
-                f"System prompt must be a string, not {type(system_prompt)}"
-            )
 
         self.system = {"role": "system", "content": system_prompt}
         return self
 
-    def transform(self, function: Callable[[str], str]):
+    def transform(self, function: Callable[[Any], Any]):
         """Transform the chain's model response with a function."""
         if not callable(function):
             raise TypeError(
                 f"Transform function must be callable, not {type(function)}"
             )
 
-        self.model_response = function(self.model_response)
+        self.model_response = (
+            None if self.model_response is None else
+            function(self.model_response)
+        )
         return self
 
-    def link(self, modifier: Union[Callable[[str], None], str], model: str = None, assistant=False, images: str | Any | List[str | Any] | ImageFormat = None):
+    def link(self, modifier: Union[Callable[[str | Any | None], str], str], model: str | None = None, assistant: bool = False, images: str | Any | List[str | Any] | ImageFormat = None):
         """Modify the chain's user prompt with a function, or just pass in a string to be added to the message list.
 
         For example:
         ```
         chain = (
-          Chain()
-          .anchor("Hello!")
-          .link("How are you?")
-          .pull().unhook()
+            Chain()
+            .anchor("Hello!")
+            .link("How are you?")
+            .pull().unhook()
 
-          .link(lambda response: f"What emotions characterize this response? {response}")
-          .pull()
-          .log()
+            .link(lambda response: f"What emotions characterize this response? {response}")
+            .pull()
+            .log()
         )
         ```
         """
         if model is None:
             model = self.model
-
-        if not callable(modifier) and not isinstance(modifier, str):
-            raise TypeError(
-                f"Modifier must be callable or string, not {type(modifier)}"
-            )
 
         if isinstance(modifier, str) and modifier == "":
             raise ValueError(
@@ -223,50 +231,17 @@ class Chain:
             )
         return self
 
-    def pull(
-        self,
-        model: str = None,
-        frequency_penalty: float | int = None,
-        json_schema: Any = None,
-        logit_bias: Dict[str, float | int] = None,
-        max_query_time=None,
-        max_tokens: float | int = None,
-        n: float | int = None,
-        presence_penalty: float | int = None,
-        response_format: ResponseFormat = None,
-        seed: int = None,
-        stop: str | List[str] = None,
-        temperature: float | int = None,
-        top_p: float | int = None,
-        tries: int = -1
-    ):
-        """Make a request to the LLM and set the response."""
-        if model is None:
-            model = self.model
+    def pull(self, json_schema: Optional[dict[Any, Any]] = None, max_query_time: Optional[int] = None, tries: int = -1, **params: Unpack[RequestParams]) -> 'Chain':
+        """Makes a request to the LLM and sets the response."""
 
-        params = {
-            'frequency_penalty': frequency_penalty,
-            'logit_bias': logit_bias,
-            'max_query_time': max_query_time,
-            'max_tokens': max_tokens,
-            'model': model,
-            'n': n,
-            'presence_penalty': presence_penalty,
-            'response_format': response_format,
-            'seed': seed,
-            'stop': stop,
-            'temperature': temperature,
-            'top_p': top_p,
-        }
+        params['model'] = params.get('model', self.model)
 
-        params = {k: v for k, v in params.items() if v is not None}
+        if len(self.user_prompt) == 0:
+            raise ValueError(
+                "User prompt is empty. Please set a user prompt before pulling."
+            )
 
         if json_schema is not None:
-            if not isinstance(json_schema, dict):
-                raise TypeError(
-                    f"JSON schema must be a dictionary, not {type(json_schema)}"
-                )
-
             params['response_format'] = {'type': 'json_object'}
             params['model'] = 'gpt-4-1106-preview'
             self.user_prompt[-1]['content'] += autodedent(
@@ -276,7 +251,8 @@ class Chain:
 
         response = self._ask(
             self.system, self.user_prompt,
-            json_schema, tries=tries, **params
+            json_schema=json_schema, max_query_time=max_query_time,
+            tries=tries, **params
         )
 
         self.model_response = response
@@ -285,53 +261,32 @@ class Chain:
     def stream(
         self,
         plain_text_stream: bool = False,
-        model: str = None,
-        frequency_penalty: float | int = None,
-        logit_bias: Dict[str, float | int] = None,
-        max_query_time=None,
-        max_tokens: float | int = None,
-        n: float | int = None,
-        presence_penalty: float | int = None,
-        seed: int = None,
-        stop: str | List[str] = None,
-        temperature: float | int = None,
-        top_p: float | int = None,
+        max_query_time: Optional[int] = None,
+        **params: Unpack[RequestParams]
+
     ):
         """Returns a generator that yields responses from the LLM."""
-        if model is None:
-            model = self.model
+        params['model'] = params.get('model', self.model)
 
-        params = {
-            'frequency_penalty': frequency_penalty,
-            'logit_bias': logit_bias,
-            'max_query_time': max_query_time,
-            'max_tokens': max_tokens,
-            'model': model,
-            'n': n,
-            'presence_penalty': presence_penalty,
-            'seed': seed,
-            'stop': stop,
-            'temperature': temperature,
-            'top_p': top_p,
-            'stream': True
-        }
-
-        params = {k: v for k, v in params.items() if v is not None}
-
-        if not plain_text_stream:
-            return self._ask(
-                self.system, self.user_prompt,
-                None, **params
+        if len(self.user_prompt) == 0:
+            raise ValueError(
+                "User prompt is empty. Please set a user prompt before pulling."
             )
 
-        return (response.choices[0].delta.content
-                for response in self._ask(self.system, self.user_prompt, None, **params))
+        return (
+            response.choices[0].delta.content if plain_text_stream else response
+            for response in self._ask(
+                self.system, self.user_prompt,
+                json_schema=None, max_query_time=max_query_time,
+                stream=True, **params
+            )
+        )
 
-    def last(self) -> str:
+    def last(self) -> str | None:
         """Return the chain's last model response."""
         return self.model_response
 
-    def token_usage(self) -> int:
+    def token_usage(self) -> tuple[int, int]:
         """Return the number of tokens used"""
         return self.prompt_tokens, self.completion_tokens
 
