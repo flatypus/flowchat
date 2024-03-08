@@ -1,5 +1,6 @@
 from .autodedent import autodedent
 from .private._private_helpers import encode_image
+from PIL.Image import Image as PILImage
 from retry import retry
 from typing import List, Optional, TypedDict, Union, Callable, Dict, Literal, Any
 from typing_extensions import Unpack, NotRequired
@@ -15,7 +16,7 @@ Message = TypedDict('Message', {'role': str, 'content': str | List[Any]})
 ResponseFormat = TypedDict(
     'ResponseFormat', {'type': Literal['text', 'json_object']})
 ImageFormat = TypedDict('ImageFormat', {
-    'url': str,
+    'url': str | PILImage,
     'format_type': str,
     'detail': Literal['low', 'high']
 })
@@ -152,7 +153,11 @@ class Chain:
                 raise Exception(
                     "Image object must have a url property."
                 )
-            url = image['url']
+            if isinstance(image['url'], str):
+                url = image['url']
+            else:
+                file_format = image['format_type'] if 'format_type' in image else "PNG"
+                url = encode_image(image['url'], file_format)
 
             return {
                 "url": url,
