@@ -2,7 +2,7 @@ from .autodedent import autodedent
 from .private._private_helpers import encode_image
 from PIL.Image import Image as PILImage
 from retry import retry
-from typing import List, Optional, TypedDict, Union, Callable, Dict, Literal, Any
+from typing import List, Optional, TypedDict, Union, Callable, Dict, Literal, Any, Generator
 from typing_extensions import Unpack, NotRequired
 from wrapt_timeout_decorator.wrapt_timeout_decorator import timeout
 import json
@@ -38,7 +38,7 @@ class RequestParams(TypedDict, total=False):
 
 
 class Chain:
-    def __init__(self, model: str, api_key: str = "", environ_key: str = "OPENAI_API_KEY"):
+    def __init__(self, model: str, api_key: str = "", environ_key: str = "OPENAI_API_KEY") -> None:
         super().__init__()
 
         if type(model) is not str:
@@ -76,13 +76,13 @@ class Chain:
         self.prompt_tokens = 0
         self.completion_tokens = 0
 
-    def _query_api(self, function: Callable[[Any], Any], *args: Any, max_query_time: int | None = None, **kwargs: Any):
+    def _query_api(self, function: Callable[[Any], Any], *args: Any, max_query_time: int | None = None, **kwargs: Any) -> Any:
         """Call the API for max_query_time seconds, and if it times out, it will retry."""
         timeouted_function = timeout(
             dec_timeout=max_query_time, use_signals=False)(function)
         return timeouted_function(*args, **kwargs)
 
-    def _try_query_and_parse(self, function: Callable[[Any], Any], json_schema: Any, *args: Any, max_query_time: int | None = None, stream: bool = False, **kwargs: Any):
+    def _try_query_and_parse(self, function: Callable[[Any], Any], json_schema: Any, *args: Any, max_query_time: int | None = None, stream: bool = False, **kwargs: Any) -> Any:
         """Query and try to parse the response, and if it fails, it will retry."""
         completion = self._query_api(
             function, *args, max_query_time=max_query_time, **kwargs)
@@ -139,7 +139,7 @@ class Chain:
 
         return message
 
-    def _format_images(self, image: str | ImageFormat | Any):
+    def _format_images(self, image: str | ImageFormat | Any) -> dict[str, str]:
         """Format whatever image format we receive into the specific format that OpenAI's API expects."""
         if isinstance(image, str):
             return {"url": image}
@@ -164,19 +164,19 @@ class Chain:
                 **({"detail": image["detail"]} if "detail" in image else {})
             }
 
-    def unhook(self):
+    def unhook(self) -> 'Chain':
         """Reset the chain's system and user prompt. The previous response is kept."""
         self.system = None
         self.user_prompt = []
         return self
 
-    def anchor(self, system_prompt: str):
+    def anchor(self, system_prompt: str) -> 'Chain':
         """Set the chain's system prompt."""
 
         self.system = {"role": "system", "content": system_prompt}
         return self
 
-    def transform(self, function: Callable[[Any], Any]):
+    def transform(self, function: Callable[[Any], Any]) -> 'Chain':
         """Transform the chain's model response with a function."""
         if not callable(function):
             raise TypeError(
@@ -189,7 +189,7 @@ class Chain:
         )
         return self
 
-    def link(self, modifier: Union[Callable[[str | Any | None], str], str], model: str | None = None, assistant: bool = False, images: str | Any | List[str | Any] | ImageFormat = None):
+    def link(self, modifier: Union[Callable[[str | Any | None], str], str], model: str | None = None, assistant: bool = False, images: str | Any | List[str | Any] | ImageFormat = None) -> 'Chain':
         """Modify the chain's user prompt with a function, or just pass in a string to be added to the message list.
 
         For example:
@@ -269,7 +269,7 @@ class Chain:
         max_query_time: Optional[int] = None,
         **params: Unpack[RequestParams]
 
-    ):
+    ) -> Generator[str, None, None]:
         """Returns a generator that yields responses from the LLM."""
         params['model'] = params.get('model', self.model)
 
@@ -295,7 +295,7 @@ class Chain:
         """Return the number of tokens used"""
         return self.prompt_tokens, self.completion_tokens
 
-    def log(self):
+    def log(self) -> 'Chain':
         """Log the chain's system prompt, user prompt, and model response."""
         print('='*60)
         print(f"System: {self.system}")
@@ -305,7 +305,7 @@ class Chain:
         print("\n")
         return self
 
-    def log_tokens(self):
+    def log_tokens(self) -> 'Chain':
         """Log the number of tokens used"""
         prompt, completion = self.token_usage()
         print(f"Prompt tokens: {prompt}")
