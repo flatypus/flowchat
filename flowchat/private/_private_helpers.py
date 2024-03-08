@@ -1,8 +1,9 @@
 from io import BytesIO
+from PIL.Image import Image
 import base64
 
 
-def _encode_image(image, format_type="PNG"):
+def encode_image(image: Image, format_type: str = "PNG"):
     buffered = BytesIO()
     image.save(buffered, format=format_type)
     img_str = base64.b64encode(buffered.getvalue())
