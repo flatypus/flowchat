@@ -287,7 +287,7 @@ class Chain:
             )
         )
 
-    def last(self) -> str:
+    def last(self) -> Any:
         """Return the chain's last model response."""
         if self.model_response is None:
             raise ValueError(
