@@ -287,8 +287,12 @@ class Chain:
             )
         )
 
-    def last(self) -> str | None:
+    def last(self) -> str:
         """Return the chain's last model response."""
+        if self.model_response is None:
+            raise ValueError(
+                "Model response is empty. Please pull a response before calling last()."
+            )
         return self.model_response
 
     def token_usage(self) -> tuple[int, int]:
