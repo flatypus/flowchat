@@ -85,7 +85,7 @@ class Chain:
     def _try_query_and_parse(self, function: Callable[[Any], Any], json_schema: Any, *args: Any, max_query_time: int | None = None, stream: bool = False, **kwargs: Any) -> Any:
         """Query and try to parse the response, and if it fails, it will retry."""
         completion = self._query_api(
-            function, *args, max_query_time=max_query_time, **kwargs)
+            function, *args, max_query_time=max_query_time, stream=stream, **kwargs)
 
         if completion is None:
             return None
