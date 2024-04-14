@@ -43,7 +43,7 @@ def main():
         # In practice, you could just ignore all of this and just execute the command.
 
         possible = (
-            Chain(model="gpt-4-1106-preview")
+            Chain(model="gpt-4-turbo")
             .anchor(os_system_context)
             .link(autodedent(
                 "The user would like to do this: ",
@@ -53,7 +53,7 @@ def main():
             .pull(json_schema={"requirement_list": "List[str]"})
             .transform(lambda requirement_json: requirement_json["requirement_list"]).log()
             .transform(lambda requirement_list: [
-                Chain("gpt-4-1106-preview")
+                Chain("gpt-4-turbo")
                 .anchor(os_system_context)
                 .link(autodedent(
                     "Suggest a command that can check if this requirement is met. The command should be a one-liner without user input or interaction.",
@@ -62,7 +62,7 @@ def main():
                 ))
                 .pull(json_schema={"command": "string", "additional_info": "List[str]"})
                 .transform(lambda command_json: (command_json["command"], [
-                    Chain("gpt-4-1106-preview")
+                    Chain("gpt-4-turbo")
                     .anchor(os_system_context)
                     .link(autodedent(
                         "The user would like to know this information: ",
@@ -90,7 +90,7 @@ def main():
 
                 .anchor(os_system_context)
                 .transform(
-                    lambda command: Chain("gpt-4-1106-preview")
+                    lambda command: Chain("gpt-4-turbo")
                     .anchor(os_system_context)
                     .link(autodedent(
                         f"The user would like to check if this requirement is met: {requirement}",
@@ -125,7 +125,7 @@ def main():
 
         # Feed the input to flowchat
         command_suggestion = (
-            Chain(model="gpt-4-1106-preview")
+            Chain(model="gpt-4-turbo")
             .anchor(os_system_context)
             .link(autodedent(
                 "The user wants to do this: ",

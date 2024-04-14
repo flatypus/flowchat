@@ -10,8 +10,11 @@ import logging
 import openai
 import os
 
-logging.basicConfig(level=logging.WARNING,
-                    format='[%(asctime)s] %(levelname)s: %(message)s')
+logging.basicConfig(
+    level=logging.WARNING,
+    format='[%(asctime)s] %(levelname)s: %(message)s'
+)
+
 Message = TypedDict('Message', {'role': str, 'content': str | List[Any]})
 ResponseFormat = TypedDict(
     'ResponseFormat', {'type': Literal['text', 'json_object']})
@@ -248,7 +251,7 @@ class Chain:
 
         if json_schema is not None:
             params['response_format'] = {'type': 'json_object'}
-            params['model'] = 'gpt-4-1106-preview'
+            params['model'] = 'gpt-4-turbo'
             self.user_prompt[-1]['content'] += autodedent(
                 "You must respond in the following example JSON format. Remember to enclose the entire JSON object in curly braces:",
                 json.dumps(json_schema, indent=4)
