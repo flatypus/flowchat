@@ -7,7 +7,7 @@ from PIL import Image
 ted_spread_image = "https://upload.wikimedia.org/wikipedia/commons/9/92/TED_Spread.png"
 
 lecture_notes = (
-    Chain(model="gpt-4-vision-preview")
+    Chain(model="gpt-4-turbo")
     .anchor(
         autodedent("""
             As a knowledgeable chatbot specializing in written summaries, provide a detailed explanation based on the given text about a topic.
@@ -30,7 +30,7 @@ print(lecture_notes)
 naruto_image = Image.open("examples/images/naruto.png")
 
 character_description = (
-    Chain(model="gpt-4-vision-preview")
+    Chain(model="gpt-4-turbo")
     .link("Who is this?", images={"url": naruto_image, "format_type": "PNG", "detail": "low"})
     .pull(max_tokens=128).last()
 )
@@ -44,7 +44,7 @@ ibm_computer_image = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/
 gaming_computer_image = "https://upload.wikimedia.org/wikipedia/commons/4/42/Alienware.JPG"
 
 computer_description = (
-    Chain(model="gpt-4-vision-preview")
+    Chain(model="gpt-4-turbo")
     .link("What are the differences between these two computers?", images=[ibm_computer_image, gaming_computer_image])
     .pull(max_tokens=256).last()
 )

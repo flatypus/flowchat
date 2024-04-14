@@ -19,7 +19,7 @@ chain = (
 
     .anchor("You are a novelist. Your job is to write a novel about a story that you have heard.")
     .link(lambda storyline: f"Briefly elaborate on the first act of the storyline: {storyline}")
-    .pull(max_tokens=256, model="gpt-4-1106-preview").log().unhook()
+    .pull(max_tokens=256, model="gpt-4-turbo").log().unhook()
 
     .link(lambda act: f"Summarize this act in around three words:\n{act}")
     .pull(model="gpt-4")
