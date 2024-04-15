@@ -3,7 +3,7 @@ import os
 import subprocess
 
 
-def execute_system_command(command):
+def execute_system_command(command: str) -> str:
     try:
         result = subprocess.run(
             command, shell=True, check=True,

@@ -18,7 +18,9 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     packages=find_packages(),
-    install_requires=["openai", "retry", "wrapt_timeout_decorator", "Pillow"],
+    install_requires=[
+        "openai", "Pillow", "tiktoken"
+    ],
     setup_requires=['pytest-runner', 'flake8'],
     tests_require=['pytest'],
     classifiers=[

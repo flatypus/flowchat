@@ -1,28 +1,18 @@
 from .autodedent import autodedent
-from .private._private_helpers import encode_image
-from PIL.Image import Image as PILImage
-from retry import retry
-from typing import List, Optional, TypedDict, Union, Callable, Dict, Literal, Any, Generator
+from .private._private_helpers import encode_image, CountStreamTokens
+from .types import *
+from typing import List, Optional, TypedDict, Union, Callable, Dict, Any, Generator
 from typing_extensions import Unpack, NotRequired
-from wrapt_timeout_decorator.wrapt_timeout_decorator import timeout
 import json
 import logging
 import openai
 import os
 
+
 logging.basicConfig(
     level=logging.WARNING,
     format='[%(asctime)s] %(levelname)s: %(message)s'
 )
-
-Message = TypedDict('Message', {'role': str, 'content': str | List[Any]})
-ResponseFormat = TypedDict(
-    'ResponseFormat', {'type': Literal['text', 'json_object']})
-ImageFormat = TypedDict('ImageFormat', {
-    'url': str | PILImage,
-    'format_type': str,
-    'detail': Literal['low', 'high']
-})
 
 
 # use total=False to make fields non-required
@@ -79,50 +69,22 @@ class Chain:
         self.prompt_tokens = 0
         self.completion_tokens = 0
 
-    def _query_api(self, function: Callable[[Any], Any], *args: Any, max_query_time: int | None = None, **kwargs: Any) -> Any:
-        """Call the API for max_query_time seconds, and if it times out, it will retry."""
-        timeouted_function = timeout(
-            dec_timeout=max_query_time, use_signals=False)(function)
-        return timeouted_function(*args, **kwargs)
+    def add_token_count(self, prompt_tokens: int, completion_tokens: int) -> None:
+        """Add token counts to the chain's total token count."""
+        self.prompt_tokens += prompt_tokens
+        self.completion_tokens += completion_tokens
 
-    def _try_query_and_parse(self, function: Callable[[Any], Any], json_schema: Any, *args: Any, max_query_time: int | None = None, stream: bool = False, **kwargs: Any) -> Any:
-        """Query and try to parse the response, and if it fails, it will retry."""
-        completion = self._query_api(
-            function, *args, max_query_time=max_query_time, stream=stream, **kwargs)
-
-        if completion is None:
-            return None
-
-        if stream:
-            return completion
-
-        message = completion.choices[0].message.content
-
-        if not json_schema is None:
-            open_bracket = message.find('{')
-            close_bracket = message.rfind('}')
-            message = message[open_bracket:close_bracket+1]
-            try:
-                message = json.loads(message)
-            except json.JSONDecodeError:
-                raise Exception(
-                    "Response was not in the expected JSON format. Please try again. Check that you haven't accidentally lowered the max_tokens parameter so that the response is truncated."
-                )
-
-        self.prompt_tokens += completion.usage.prompt_tokens
-        self.completion_tokens += completion.usage.completion_tokens
-
-        return message
+    def _get_completion(self, **params: Any) -> CreateResponse:
+        """Get a completion from OpenAI's API."""
+        return openai.chat.completions.create(**params)  # type: ignore
 
     def _ask(
         self,
         system: Message | None,
         user_messages: List[Message],
         json_schema: Optional[dict[Any, Any]] = None,
-        max_query_time: Optional[int] = None,
-        tries: int = -1,
         stream: bool = False,
-        **params: Any
+        **params: Unpack[RequestParams]
     ) -> Any:
         """Ask a question to the chatbot with a system prompt and return the response."""
 
@@ -131,16 +93,42 @@ class Chain:
             *user_messages
         ] if system else user_messages
 
-        message = retry(delay=1, logger=logging.getLogger(), tries=tries)(self._try_query_and_parse)(
-            openai.chat.completions.create,  # type: ignore
-            json_schema=json_schema,
-            messages=messages,
-            max_query_time=max_query_time,
-            stream=stream,
-            **params
+        completion = self._get_completion(
+            messages=messages, stream=stream, **params
         )
 
-        return message
+        if completion is None:
+            return None
+
+        if stream and isinstance(completion, Stream):
+            return CountStreamTokens(messages).count(
+                completion,
+                lambda tokens: self.add_token_count(0, tokens)
+            )
+
+        elif isinstance(completion, ChatCompletion):
+            message = completion.choices[0].message.content
+            if message is None:
+                raise Exception("Response was empty. Please try again.")
+
+            if not json_schema is None:
+                open_bracket = message.find('{')
+                close_bracket = message.rfind('}')
+                message = message[open_bracket:close_bracket+1]
+                try:
+                    message = json.loads(message)
+                except json.JSONDecodeError:
+                    raise Exception(
+                        "Response was not in the expected JSON format. Please try again. Check that you haven't accidentally lowered the max_tokens parameter so that the response is truncated."
+                    )
+
+            if completion.usage is not None:
+                self.add_token_count(
+                    completion.usage.prompt_tokens,
+                    completion.usage.completion_tokens
+                )
+
+            return message
 
     def _format_images(self, image: str | ImageFormat | Any) -> dict[str, str]:
         """Format whatever image format we receive into the specific format that OpenAI's API expects."""
@@ -239,7 +227,7 @@ class Chain:
             )
         return self
 
-    def pull(self, json_schema: Optional[dict[Any, Any]] = None, max_query_time: Optional[int] = None, tries: int = -1, **params: Unpack[RequestParams]) -> 'Chain':
+    def pull(self, json_schema: Optional[dict[Any, Any]] = None, **params: Unpack[RequestParams]) -> 'Chain':
         """Makes a request to the LLM and sets the response."""
 
         params['model'] = params.get('model', self.model)
@@ -259,19 +247,15 @@ class Chain:
 
         response = self._ask(
             self.system, self.user_prompt,
-            json_schema=json_schema, max_query_time=max_query_time,
-            tries=tries, **params
+            json_schema=json_schema, **params
         )
 
         self.model_response = response
         return self
 
     def stream(
-        self,
-        plain_text_stream: bool = False,
-        max_query_time: Optional[int] = None,
+        self, plain_text_stream: bool = False,
         **params: Unpack[RequestParams]
-
     ) -> Generator[str, None, None]:
         """Returns a generator that yields responses from the LLM."""
         params['model'] = params.get('model', self.model)
@@ -285,7 +269,7 @@ class Chain:
             response.choices[0].delta.content if plain_text_stream else response
             for response in self._ask(
                 self.system, self.user_prompt,
-                json_schema=None, max_query_time=max_query_time,
+                json_schema=None,
                 stream=True, **params
             )
         )
