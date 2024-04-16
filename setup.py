@@ -19,7 +19,7 @@ setup(
     long_description_content_type='text/markdown',
     packages=find_packages(),
     install_requires=[
-        "openai", "Pillow", "tiktoken"
+        "openai", "Pillow", "tiktoken", "requests"
     ],
     setup_requires=['pytest-runner', 'flake8'],
     tests_require=['pytest'],
