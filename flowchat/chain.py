@@ -30,6 +30,11 @@ class RequestParams(TypedDict, total=False):
     top_p: NotRequired[Union[float, int]]
 
 
+class Usage(TypedDict):
+    prompt_tokens: int
+    completion_tokens: int
+
+
 class Chain:
     def __init__(self, model: str, api_key: str = "", environ_key: str = "OPENAI_API_KEY") -> None:
         super().__init__()
@@ -66,13 +71,15 @@ class Chain:
         self.system: Message | None = None
         self.user_prompt: List[Message] = []
         self.model_response = None
-        self.prompt_tokens = 0
-        self.completion_tokens = 0
+        self.usage: Usage = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0
+        }
 
-    def add_token_count(self, prompt_tokens: int, completion_tokens: int) -> None:
+    def _add_token_count(self, prompt_tokens: int, completion_tokens: int) -> None:
         """Add token counts to the chain's total token count."""
-        self.prompt_tokens += prompt_tokens
-        self.completion_tokens += completion_tokens
+        self.usage["prompt_tokens"] += prompt_tokens
+        self.usage["completion_tokens"] += completion_tokens
 
     def _get_completion(self, **params: Any) -> CreateResponse:
         """Get a completion from OpenAI's API."""
@@ -87,6 +94,7 @@ class Chain:
         **params: Unpack[RequestParams]
     ) -> Any:
         """Ask a question to the chatbot with a system prompt and return the response."""
+        model = params.get("model", self.model)
 
         messages = [
             system,
@@ -101,10 +109,7 @@ class Chain:
             return None
 
         if stream and isinstance(completion, Stream):
-            return CountStreamTokens(messages).count(
-                completion,
-                lambda tokens: self.add_token_count(0, tokens)
-            )
+            return CountStreamTokens(model, messages).count(completion, self._add_token_count)
 
         elif isinstance(completion, ChatCompletion):
             message = completion.choices[0].message.content
@@ -121,9 +126,10 @@ class Chain:
                     raise Exception(
                         "Response was not in the expected JSON format. Please try again. Check that you haven't accidentally lowered the max_tokens parameter so that the response is truncated."
                     )
+            print(completion)
 
             if completion.usage is not None:
-                self.add_token_count(
+                self._add_token_count(
                     completion.usage.prompt_tokens,
                     completion.usage.completion_tokens
                 )
@@ -282,9 +288,9 @@ class Chain:
             )
         return self.model_response
 
-    def token_usage(self) -> tuple[int, int]:
+    def token_usage(self) -> Usage:
         """Return the number of tokens used"""
-        return self.prompt_tokens, self.completion_tokens
+        return self.usage
 
     def log(self) -> 'Chain':
         """Log the chain's system prompt, user prompt, and model response."""
@@ -298,7 +304,9 @@ class Chain:
 
     def log_tokens(self) -> 'Chain':
         """Log the number of tokens used"""
-        prompt, completion = self.token_usage()
+        usage = self.token_usage()
+        prompt = usage["prompt_tokens"]
+        completion = usage["completion_tokens"]
         print(f"Prompt tokens: {prompt}")
         print(f"Completion tokens: {completion}")
         print(f"Total tokens: {prompt + completion}")

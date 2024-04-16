@@ -8,7 +8,10 @@ from typing import List,  TypedDict, Literal, Any
 StreamChatCompletion = Stream[ChatCompletionChunk]
 CreateResponse = None | ChatCompletion | StreamChatCompletion
 
-Message = TypedDict('Message', {'role': str, 'content': str | List[Any]})
+
+Message = TypedDict(
+    'Message', {'role': str, 'content': str | List[Any]}
+)
 ResponseFormat = TypedDict(
     'ResponseFormat', {'type': Literal['text', 'json_object']})
 ImageFormat = TypedDict('ImageFormat', {
