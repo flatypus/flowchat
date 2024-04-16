@@ -109,7 +109,7 @@ class Chain:
             return None
 
         if stream and isinstance(completion, Stream):
-            return CountStreamTokens(model, messages).count(completion, self._add_token_count)
+            return CountStreamTokens(model, messages).wrap_stream_and_count(completion, self._add_token_count)
 
         elif isinstance(completion, ChatCompletion):
             message = completion.choices[0].message.content

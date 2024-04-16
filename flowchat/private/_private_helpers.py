@@ -134,7 +134,7 @@ class CountStreamTokens:
     def _count_output_tokens(self, message: str):
         return len(self.encoding.encode(message))
 
-    def count(self, generator: StreamChatCompletion, callback: Callable[[int, int], None]):
+    def wrap_stream_and_count(self, generator: StreamChatCompletion, callback: Callable[[int, int], None]):
         for response in generator:
             content = response.choices[0].delta.content
             yield response
