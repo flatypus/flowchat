@@ -54,7 +54,8 @@ class CountStreamTokens:
     def __init__(self, model: str, messages: List[Message]):
         self.collect_tokens: List[str] = []
         self.messages = messages
-        self.model = self._get_model(model)
+        self.model = model
+        self._get_model(model)
         self.tokens_per_message = 3
         self.tokens_per_name = 1
 
@@ -128,13 +129,12 @@ class CountStreamTokens:
                 )
 
         tokens += 3  # every reply is primed with <|start|>assistant<|message|>
-
         return tokens
 
     def _count_output_tokens(self, message: str):
         return len(self.encoding.encode(message))
 
-    def wrap_stream_and_count(self, generator: StreamChatCompletion, callback: Callable[[int, int], None]):
+    def wrap_stream_and_count(self, generator: StreamChatCompletion, callback: Callable[[int, int, str], None]):
         for response in generator:
             content = response.choices[0].delta.content
             yield response
@@ -143,7 +143,7 @@ class CountStreamTokens:
                 output_message = "".join(self.collect_tokens)
                 prompt_tokens = self._count_input_tokens()
                 completion_tokens = self._count_output_tokens(output_message)
-                callback(prompt_tokens, completion_tokens)
+                callback(prompt_tokens, completion_tokens, self.model)
                 continue
 
             self.collect_tokens.append(content)

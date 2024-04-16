@@ -3,6 +3,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from PIL.Image import Image as PILImage
 from typing import List, NotRequired,  TypedDict, Literal, Any, Union, Dict
+from datetime import datetime
 
 
 StreamChatCompletion = Stream[ChatCompletionChunk]
@@ -40,3 +41,9 @@ class RequestParams(TypedDict, total=False):
 class Usage(TypedDict):
     prompt_tokens: int
     completion_tokens: int
+
+
+class DetailedUsage(TypedDict):
+    model: str
+    usage: Usage
+    time: datetime
