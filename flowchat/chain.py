@@ -1,8 +1,8 @@
 from .autodedent import autodedent
 from .private._private_helpers import encode_image, CountStreamTokens
 from .types import *
-from typing import List, Optional, TypedDict, Union, Callable, Dict, Any, Generator
-from typing_extensions import Unpack, NotRequired
+from typing import List, Optional, Union, Callable, Any, Generator
+from typing_extensions import Unpack
 import json
 import logging
 import openai
@@ -13,26 +13,6 @@ logging.basicConfig(
     level=logging.WARNING,
     format='[%(asctime)s] %(levelname)s: %(message)s'
 )
-
-
-# use total=False to make fields non-required
-class RequestParams(TypedDict, total=False):
-    model: NotRequired[str]
-    frequency_penalty: NotRequired[Union[float, int]]
-    logit_bias: NotRequired[Dict[str, Union[float, int]]]
-    max_tokens: NotRequired[Union[float, int]]
-    n: NotRequired[Union[float, int]]
-    presence_penalty: NotRequired[Union[float, int]]
-    response_format: NotRequired[ResponseFormat]
-    seed: NotRequired[int]
-    stop: NotRequired[Union[str, List[str]]]
-    temperature: NotRequired[Union[float, int]]
-    top_p: NotRequired[Union[float, int]]
-
-
-class Usage(TypedDict):
-    prompt_tokens: int
-    completion_tokens: int
 
 
 class Chain:
