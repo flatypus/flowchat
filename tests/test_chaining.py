@@ -88,16 +88,23 @@ class TestChaining:
     def test_token_usage(self):
         # test that the token_usage method works as expected
         chain = Chain(model="gpt-3.5-turbo")
-        chain.prompt_tokens = 1
-        chain.completion_tokens = 2
+        chain.usage = {
+            "prompt_tokens":  1,
+            "completion_tokens":  2
+        }
         usage = chain.token_usage()
-        assert usage == (1, 2)
+        assert usage == {
+            "prompt_tokens":  1,
+            "completion_tokens":  2
+        }
 
     def test_log_tokens(self, capsys):
         # test that the log_tokens method works as expected
         chain = Chain(model="gpt-3.5-turbo")
-        chain.prompt_tokens = 1
-        chain.completion_tokens = 2
+        chain.usage = {
+            "prompt_tokens":  1,
+            "completion_tokens":  2
+        }
         chain.log_tokens()
         captured = capsys.readouterr()
         assert captured.out == f"Prompt tokens: 1\nCompletion tokens: 2\nTotal tokens: 3\n"

@@ -28,7 +28,7 @@ class TestChain(unittest.TestCase):
         }
         self.chain._ask.assert_called_with(
             self.chain.system, self.chain.user_prompt,
-            json_schema=None, max_query_time=None, tries=-1,
+            json_schema=None,
             **expected_params
         )
 
