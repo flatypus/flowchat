@@ -1,6 +1,7 @@
 from .autodedent import autodedent
 from .private._private_helpers import encode_image, CountStreamTokens
 from .types import *
+from datetime import datetime
 from typing import List, Optional, Union, Callable, Any, Generator
 from typing_extensions import Unpack
 import json
@@ -51,15 +52,18 @@ class Chain:
         self.system: Message | None = None
         self.user_prompt: List[Message] = []
         self.model_response = None
-        self.usage: Usage = {
-            "prompt_tokens": 0,
-            "completion_tokens": 0
-        }
+        self.usage: Usage = {"prompt_tokens": 0, "completion_tokens": 0}
+        self.detailed_usage: List[DetailedUsage] = []
 
-    def _add_token_count(self, prompt_tokens: int, completion_tokens: int) -> None:
+    def _add_token_count(self,  prompt_tokens: int, completion_tokens: int, model: str) -> None:
         """Add token counts to the chain's total token count."""
         self.usage["prompt_tokens"] += prompt_tokens
         self.usage["completion_tokens"] += completion_tokens
+        self.detailed_usage.append({
+            "model": model,
+            "usage": {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens},
+            "time": datetime.now()
+        })
 
     def _get_completion(self, **params: Any) -> CreateResponse:
         """Get a completion from OpenAI's API."""
@@ -106,12 +110,12 @@ class Chain:
                     raise Exception(
                         "Response was not in the expected JSON format. Please try again. Check that you haven't accidentally lowered the max_tokens parameter so that the response is truncated."
                     )
-            print(completion)
 
             if completion.usage is not None:
                 self._add_token_count(
                     completion.usage.prompt_tokens,
-                    completion.usage.completion_tokens
+                    completion.usage.completion_tokens,
+                    model
                 )
 
             return message
@@ -272,6 +276,16 @@ class Chain:
         """Return the number of tokens used"""
         return self.usage
 
+    def detailed_token_usage(self) -> List[DetailedUsage]:
+        """Return the detailed token usage"""
+        return self.detailed_usage
+
+    def reset_token_usage(self) -> 'Chain':
+        """Reset the token usage"""
+        self.usage = {"prompt_tokens": 0, "completion_tokens": 0}
+        self.detailed_usage = []
+        return self
+
     def log(self) -> 'Chain':
         """Log the chain's system prompt, user prompt, and model response."""
         print('='*60)
@@ -290,4 +304,16 @@ class Chain:
         print(f"Prompt tokens: {prompt}")
         print(f"Completion tokens: {completion}")
         print(f"Total tokens: {prompt + completion}")
+        return self
+
+    def log_detailed_tokens(self) -> 'Chain':
+        """Log the detailed token usage"""
+        for usage in self.detailed_token_usage():
+            print('='*60)
+            print(f"Model: {usage['model']}")
+            print(f"Prompt tokens: {usage['usage']['prompt_tokens']}")
+            print(f"Completion tokens: {usage['usage']['completion_tokens']}")
+            print(f"Time: {usage['time']}")
+            print('='*60)
+            print("\n")
         return self
