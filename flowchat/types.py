@@ -48,7 +48,7 @@ ToolChoice = TypedDict('ToolChoice', {
 class RequestParams(TypedDict, total=False):
     model: NotRequired[str]
     frequency_penalty: NotRequired[Union[float, int]]
-    logit_bias: NotRequired[Dict[str, Union[float, int]]]
+    logit_bias: NotRequired[Dict[Any, Any]]
     logprobs: NotRequired[bool]
     top_logprobs: NotRequired[int]
     max_tokens: NotRequired[Union[float, int]]
