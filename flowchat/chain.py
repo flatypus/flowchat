@@ -52,6 +52,7 @@ class Chain:
         self.system: Message | None = None
         self.user_prompt: List[Message] = []
         self.model_response = None
+        self.raw_model_response = None
         self.usage: Usage = {"prompt_tokens": 0, "completion_tokens": 0}
         self.detailed_usage: List[DetailedUsage] = []
 
@@ -96,6 +97,7 @@ class Chain:
             return wrap_stream_and_count(completion, model, self._add_token_count)
 
         elif isinstance(completion, ChatCompletion):
+            self.raw_model_response = completion
             message = completion.choices[0].message.content
             if message is None:
                 raise Exception("Response was empty. Please try again.")
