@@ -9,7 +9,6 @@ from datetime import datetime
 StreamChatCompletion = Stream[ChatCompletionChunk]
 CreateResponse = None | ChatCompletion | StreamChatCompletion
 
-
 Message = TypedDict(
     'Message', {'role': str, 'content': str | List[Any]}
 )
@@ -21,21 +20,49 @@ ImageFormat = TypedDict('ImageFormat', {
     'detail': Literal['low', 'high']
 })
 
-# use total=False to make fields non-required
+StreamOptions = TypedDict('StreamOptions', {
+    'include_usage': bool
+})
+
+Function = TypedDict('Function', {
+    'name': str,
+    'description': NotRequired[str],
+    'parameters': NotRequired[Any],
+})
+
+Tool = TypedDict('Tool', {
+    'type': str,
+    'function': Function
+})
+
+ToolChoiceFunction = TypedDict('ToolChoiceFunction', {
+    'name': str
+})
+
+ToolChoice = TypedDict('ToolChoice', {
+    'type': str,
+    'function': ToolChoiceFunction
+})
 
 
 class RequestParams(TypedDict, total=False):
     model: NotRequired[str]
     frequency_penalty: NotRequired[Union[float, int]]
     logit_bias: NotRequired[Dict[str, Union[float, int]]]
+    logprobs: NotRequired[bool]
+    top_logprobs: NotRequired[int]
     max_tokens: NotRequired[Union[float, int]]
     n: NotRequired[Union[float, int]]
     presence_penalty: NotRequired[Union[float, int]]
     response_format: NotRequired[ResponseFormat]
     seed: NotRequired[int]
     stop: NotRequired[Union[str, List[str]]]
+    stream_options: NotRequired[StreamOptions]
     temperature: NotRequired[Union[float, int]]
     top_p: NotRequired[Union[float, int]]
+    tools: NotRequired[List[Tool]]
+    tool_choice: NotRequired[Union[str, ToolChoice]]
+    user: NotRequired[str]
 
 
 class Usage(TypedDict):
