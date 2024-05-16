@@ -4,7 +4,7 @@ from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-VERSION = '1.2.3'
+VERSION = '1.2.4'
 DESCRIPTION = 'Streamlining the process of multi-prompting LLMs with chains'
 
 setup(
@@ -19,7 +19,7 @@ setup(
     long_description_content_type='text/markdown',
     packages=find_packages(),
     install_requires=[
-        "openai", "Pillow", "tiktoken", "requests"
+        "openai", "Pillow", "requests"
     ],
     setup_requires=['pytest-runner', 'flake8'],
     tests_require=['pytest'],

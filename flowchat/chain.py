@@ -1,5 +1,5 @@
 from .autodedent import autodedent
-from .private._private_helpers import encode_image, CountStreamTokens
+from .private._private_helpers import encode_image, wrap_stream_and_count
 from .types import *
 from datetime import datetime
 from typing import List, Optional, Union, Callable, Any, Generator
@@ -55,7 +55,7 @@ class Chain:
         self.usage: Usage = {"prompt_tokens": 0, "completion_tokens": 0}
         self.detailed_usage: List[DetailedUsage] = []
 
-    def _add_token_count(self,  prompt_tokens: int, completion_tokens: int, model: str) -> None:
+    def _add_token_count(self, prompt_tokens: int, completion_tokens: int, model: str) -> None:
         """Add token counts to the chain's total token count."""
         self.usage["prompt_tokens"] += prompt_tokens
         self.usage["completion_tokens"] += completion_tokens
@@ -93,7 +93,7 @@ class Chain:
             return None
 
         if stream and isinstance(completion, Stream):
-            return CountStreamTokens(model, messages).wrap_stream_and_count(completion, self._add_token_count)
+            return wrap_stream_and_count(completion, model, self._add_token_count)
 
         elif isinstance(completion, ChatCompletion):
             message = completion.choices[0].message.content
@@ -249,6 +249,7 @@ class Chain:
     ) -> Generator[str, None, None]:
         """Returns a generator that yields responses from the LLM."""
         params['model'] = params.get('model', self.model)
+        params['stream_options'] = {'include_usage': True}
 
         if len(self.user_prompt) == 0:
             raise ValueError(
