@@ -10,8 +10,11 @@ async def main():
     )
     response = ""
     async for token in await chain.async_stream(plain_text_stream=True):
+        if token == None:
+            continue
         response += token
 
+    print(response)
     chain.log_detailed_tokens()
 
 

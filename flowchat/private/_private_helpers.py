@@ -20,8 +20,6 @@ def wrap_stream_and_count(generator: StreamCompletion, model: str, callback: Cal
                 callback(usage.prompt_tokens, usage.completion_tokens, model)
             continue
         content = response.choices[0].delta.content
-        if content == None:
-            continue
         yield content if plain_text_stream else response
 
 
@@ -33,6 +31,4 @@ async def async_wrap_stream_and_count(generator: AsyncStreamCompletion, model: s
                 callback(usage.prompt_tokens, usage.completion_tokens, model)
             continue
         content = response.choices[0].delta.content
-        if content == None:
-            continue
         yield content if plain_text_stream else response
