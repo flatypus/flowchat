@@ -22,7 +22,7 @@ chain = (
     .pull(max_tokens=256, model="gpt-4-turbo").log().unhook()
 
     .link(lambda act: f"Summarize this act in around three words:\n{act}")
-    .pull(model="gpt-4")
+    .pull(model="gpt-4o")
     .log_tokens()  # Log token usage of the whole chain
 )
 

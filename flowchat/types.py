@@ -1,13 +1,14 @@
-from openai import Stream
 from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
+from openai import Stream, AsyncStream
 from PIL.Image import Image as PILImage
 from typing import List, NotRequired,  TypedDict, Literal, Any, Union, Dict
 from datetime import datetime
 
 
-StreamChatCompletion = Stream[ChatCompletionChunk]
-CreateResponse = None | ChatCompletion | StreamChatCompletion
+StreamCompletion = Stream[ChatCompletionChunk]
+AsyncStreamCompletion = AsyncStream[ChatCompletionChunk]
+CreateResponse = None | ChatCompletion | StreamCompletion | AsyncStreamCompletion
 
 Message = TypedDict(
     'Message', {'role': str, 'content': str | List[Any]}

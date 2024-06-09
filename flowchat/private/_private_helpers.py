@@ -12,11 +12,27 @@ def encode_image(image: PILImage, format_type: str = "PNG"):
     return f"data:image/png;base64,{img_str.decode('utf-8')}"
 
 
-def wrap_stream_and_count(generator: StreamChatCompletion, model: str, callback: Callable[[int, int, str], None]):
+def wrap_stream_and_count(generator: StreamCompletion, model: str, callback: Callable[[int, int, str], None], plain_text_stream: bool = False):
     for response in generator:
         if len(response.choices) == 0:
             usage = response.usage
             if usage is not None:
                 callback(usage.prompt_tokens, usage.completion_tokens, model)
             continue
-        yield response
+        content = response.choices[0].delta.content
+        if content == None:
+            continue
+        yield content if plain_text_stream else response
+
+
+async def async_wrap_stream_and_count(generator: AsyncStreamCompletion, model: str, callback: Callable[[int, int, str], None], plain_text_stream: bool = False):
+    async for response in generator:
+        if len(response.choices) == 0:
+            usage = response.usage
+            if usage is not None:
+                callback(usage.prompt_tokens, usage.completion_tokens, model)
+            continue
+        content = response.choices[0].delta.content
+        if content == None:
+            continue
+        yield content if plain_text_stream else response
