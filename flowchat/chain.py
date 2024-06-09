@@ -1,8 +1,8 @@
 from .autodedent import autodedent
-from .private._private_helpers import encode_image, wrap_stream_and_count
+from .private._private_helpers import encode_image, wrap_stream_and_count, async_wrap_stream_and_count
 from .types import *
 from datetime import datetime
-from typing import List, Optional, Union, Callable, Any, Generator
+from typing import List, Optional, Union, Callable, Any, Generator, AsyncGenerator
 from typing_extensions import Unpack
 import json
 import logging
@@ -66,39 +66,16 @@ class Chain:
             "time": datetime.now()
         })
 
-    def _get_completion(self, asynchronous: bool, **params: Any) -> CreateResponse:
+    def _get_completion(self, **params: Any) -> CreateResponse:
         """Get a completion from OpenAI's API."""
-        client = self.asyncClient if asynchronous else self.client
-        return client.chat.completions.create(**params)  # type: ignore
+        return self.client.chat.completions.create(**params)  # type: ignore
 
-    def _ask(
-        self,
-        system: Message | None,
-        user_messages: List[Message],
-        json_schema: Optional[dict[Any, Any]] = None,
-        stream: bool = False,
-        asynchronous: bool = False,
-        **params: Unpack[RequestParams]
-    ) -> Any:
-        """Ask a question to the chatbot with a system prompt and return the response."""
-        model = params.get("model", self.model)
+    async def _get_async_completion(self, **params: Any) -> CreateResponse:
+        """Get a completion from OpenAI's API asynchronously."""
+        return await self.asyncClient.chat.completions.create(**params)  # type: ignore
 
-        messages = [
-            system,
-            *user_messages
-        ] if system else user_messages
-
-        completion = self._get_completion(
-            messages=messages, stream=stream, asynchronous=asynchronous, **params
-        )
-
-        if completion is None:
-            return None
-
-        if stream and isinstance(completion, Stream):
-            return wrap_stream_and_count(completion, model, self._add_token_count)
-
-        elif isinstance(completion, ChatCompletion):
+    def _post_completion(self, completion: CreateResponse, model: str, json_schema: Optional[dict[Any, Any]] = None) -> Any:
+        if isinstance(completion, ChatCompletion):
             self.raw_model_response = completion
             message = completion.choices[0].message.content
             if message is None:
@@ -123,6 +100,61 @@ class Chain:
                 )
 
             return message
+
+    def _ask(
+        self,
+        system: Message | None,
+        user_messages: List[Message],
+        json_schema: Optional[dict[Any, Any]] = None,
+        stream: bool = False,
+        plain_text_stream: bool = False,
+        **params: Unpack[RequestParams]
+    ) -> Any:
+        """Ask a question to the chatbot with a system prompt and return the response."""
+        model = params.get("model", self.model)
+
+        messages = [
+            system,
+            *user_messages
+        ] if system else user_messages
+
+        completion = self._get_completion(
+            messages=messages, stream=stream, **params)
+
+        if completion is None:
+            return None
+
+        if stream and isinstance(completion, Stream):
+            return wrap_stream_and_count(completion, model, self._add_token_count, plain_text_stream)
+
+        return self._post_completion(completion, model, json_schema)
+
+    async def async_ask(
+        self,
+        system: Message | None,
+        user_messages: List[Message],
+        json_schema: Optional[dict[Any, Any]] = None,
+        stream: bool = False,
+        plain_text_stream: bool = False,
+        **params: Unpack[RequestParams]
+    ) -> Any:
+        """Ask a question to the chatbot with a system prompt and return the response."""
+        model = params.get("model", self.model)
+
+        messages = [
+            system,
+            *user_messages
+        ] if system else user_messages
+
+        completion = await self._get_async_completion(messages=messages, stream=stream, **params)
+
+        if completion is None:
+            return None
+
+        if stream and isinstance(completion, AsyncStream):
+            return async_wrap_stream_and_count(completion, model, self._add_token_count, plain_text_stream)
+
+        return self._post_completion(completion, model, json_schema)
 
     def _format_images(self, image: str | ImageFormat | Any) -> dict[str, str]:
         """Format whatever image format we receive into the specific format that OpenAI's API expects."""
@@ -221,9 +253,7 @@ class Chain:
             )
         return self
 
-    def pull_base(self, asynchronous: bool = False, json_schema: Optional[dict[Any, Any]] = None, **params: Unpack[RequestParams]) -> 'Chain':
-        """Makes a request to the LLM and sets the response."""
-
+    def setup_pull(self, asynchronous: bool = False, json_schema: Optional[dict[Any, Any]] = None, **params: Unpack[RequestParams]):
         params['model'] = params.get('model', self.model)
 
         if len(self.user_prompt) == 0:
@@ -239,19 +269,21 @@ class Chain:
                 json.dumps(json_schema, indent=4)
             )
 
-        response = self._ask(
+        ask = self.async_ask if asynchronous else self._ask
+        return ask(
             self.system, self.user_prompt,
-            json_schema=json_schema, asynchronous=asynchronous, **params
+            json_schema=json_schema, **params
         )
 
-        self.model_response = response
+    def pull(self, json_schema: Optional[dict[Any, Any]] = None, **params: Unpack[RequestParams]) -> 'Chain':
+        """Makes a request to the LLM and sets the response."""
+        self.model_response = self.setup_pull(False, json_schema, **params)
         return self
 
-    def pull(self, json_schema: Optional[dict[Any, Any]] = None, **params: Unpack[RequestParams]) -> 'Chain':
-        return self.pull_base(False, json_schema, **params)
-
     async def async_pull(self, json_schema: Optional[dict[Any, Any]] = None, **params: Unpack[RequestParams]) -> 'Chain':
-        return self.pull_base(True, json_schema, **params)
+        """Makes a request to the LLM and sets the response."""
+        self.model_response = await self.setup_pull(True, json_schema, **params)
+        return self
 
     def stream(
         self, plain_text_stream: bool = False,
@@ -269,6 +301,28 @@ class Chain:
         return (
             response.choices[0].delta.content if plain_text_stream else response
             for response in self._ask(
+                self.system, self.user_prompt,
+                json_schema=None,
+                stream=True, **params
+            )
+        )
+
+    async def async_stream(
+        self, plain_text_stream: bool = False,
+        **params: Unpack[RequestParams]
+    ) -> AsyncGenerator[str, None]:
+        """Returns a generator that yields responses from the LLM."""
+        params['model'] = params.get('model', self.model)
+        params['stream_options'] = {'include_usage': True}
+
+        if len(self.user_prompt) == 0:
+            raise ValueError(
+                "User prompt is empty. Please set a user prompt before pulling."
+            )
+
+        return (
+            response.choices[0].delta.content if plain_text_stream else response
+            async for response in await self.async_ask(
                 self.system, self.user_prompt,
                 json_schema=None,
                 stream=True, **params

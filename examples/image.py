@@ -21,11 +21,10 @@ lecture_notes = (
         "Observations: ",
         observations,
     )).pull(max_tokens=256)
-    .log_tokens()
-    .last()
 )
 
-print(lecture_notes)
+print(lecture_notes.last())
+lecture_notes.log_detailed_tokens()
 
 # ========================================================================== #
 # Image from local file
@@ -35,11 +34,10 @@ character_description = (
     Chain(model="gpt-4-turbo")
     .link("Who is this?", images={"url": naruto_image, "format_type": "PNG", "detail": "low"})
     .pull(max_tokens=128)
-    .log_tokens()
-    .last()
 )
 
-print(character_description)
+print(character_description.last())
+character_description.log_detailed_tokens()
 
 # ========================================================================== #
 # Multiple Images!
@@ -51,8 +49,7 @@ computer_description = (
     Chain(model="gpt-4-turbo")
     .link("What are the differences between these two computers?", images=[ibm_computer_image, gaming_computer_image])
     .pull(max_tokens=256)
-    .log_tokens()
-    .last()
 )
 
-print(computer_description)
+print(computer_description.last())
+computer_description.log_detailed_tokens()
