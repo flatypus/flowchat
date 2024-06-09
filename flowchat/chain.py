@@ -288,7 +288,7 @@ class Chain:
     def stream(
         self, plain_text_stream: bool = False,
         **params: Unpack[RequestParams]
-    ) -> Generator[str, None, None]:
+    ) -> Generator[str | Any | None, None, None]:
         """Returns a generator that yields responses from the LLM."""
         params['model'] = params.get('model', self.model)
         params['stream_options'] = {'include_usage': True}
@@ -310,7 +310,7 @@ class Chain:
     async def async_stream(
         self, plain_text_stream: bool = False,
         **params: Unpack[RequestParams]
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[str | Any | None, None]:
         """Returns a generator that yields responses from the LLM."""
         params['model'] = params.get('model', self.model)
         params['stream_options'] = {'include_usage': True}
