@@ -46,8 +46,8 @@ class Chain:
                 "pass in an api_key parameter, or set the environ_key parameter to the environment "
                 "variable that contains your API key."
             )
-        openai.api_key = api_key
-
+        self.client = openai.Client(api_key=api_key)
+        self.asyncClient = openai.AsyncClient(api_key=api_key)
         self.model = model
         self.system: Message | None = None
         self.user_prompt: List[Message] = []
@@ -66,9 +66,10 @@ class Chain:
             "time": datetime.now()
         })
 
-    def _get_completion(self, **params: Any) -> CreateResponse:
+    def _get_completion(self, asynchronous: bool, **params: Any) -> CreateResponse:
         """Get a completion from OpenAI's API."""
-        return openai.chat.completions.create(**params)  # type: ignore
+        client = self.asyncClient if asynchronous else self.client
+        return client.chat.completions.create(**params)  # type: ignore
 
     def _ask(
         self,
@@ -76,6 +77,7 @@ class Chain:
         user_messages: List[Message],
         json_schema: Optional[dict[Any, Any]] = None,
         stream: bool = False,
+        asynchronous: bool = False,
         **params: Unpack[RequestParams]
     ) -> Any:
         """Ask a question to the chatbot with a system prompt and return the response."""
@@ -87,7 +89,7 @@ class Chain:
         ] if system else user_messages
 
         completion = self._get_completion(
-            messages=messages, stream=stream, **params
+            messages=messages, stream=stream, asynchronous=asynchronous, **params
         )
 
         if completion is None:
@@ -219,7 +221,7 @@ class Chain:
             )
         return self
 
-    def pull(self, json_schema: Optional[dict[Any, Any]] = None, **params: Unpack[RequestParams]) -> 'Chain':
+    def pull_base(self, asynchronous: bool = False, json_schema: Optional[dict[Any, Any]] = None, **params: Unpack[RequestParams]) -> 'Chain':
         """Makes a request to the LLM and sets the response."""
 
         params['model'] = params.get('model', self.model)
@@ -239,11 +241,17 @@ class Chain:
 
         response = self._ask(
             self.system, self.user_prompt,
-            json_schema=json_schema, **params
+            json_schema=json_schema, asynchronous=asynchronous, **params
         )
 
         self.model_response = response
         return self
+
+    def pull(self, json_schema: Optional[dict[Any, Any]] = None, **params: Unpack[RequestParams]) -> 'Chain':
+        return self.pull_base(False, json_schema, **params)
+
+    async def async_pull(self, json_schema: Optional[dict[Any, Any]] = None, **params: Unpack[RequestParams]) -> 'Chain':
+        return self.pull_base(True, json_schema, **params)
 
     def stream(
         self, plain_text_stream: bool = False,
