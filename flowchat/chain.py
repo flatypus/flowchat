@@ -351,6 +351,16 @@ class Chain:
         self.detailed_usage = []
         return self
 
+    def subscribe_token_usage(self, usage_object: Usage) -> 'Chain':
+        """Subscribe to a token usage object"""
+        self.usage = usage_object
+        return self
+
+    def subscribe_detailed_token_usage(self, detailed_usage_object: List[DetailedUsage]) -> 'Chain':
+        """Subscribe to a detailed token usage object"""
+        self.detailed_usage = detailed_usage_object
+        return self
+
     def log(self) -> 'Chain':
         """Log the chain's system prompt, user prompt, and model response."""
         print('='*60)
