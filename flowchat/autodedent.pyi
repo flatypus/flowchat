@@ -1,0 +1,3 @@
+from typing import Any
+
+def autodedent(*text_lines: Any) -> str: ...

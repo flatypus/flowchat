@@ -2,8 +2,10 @@ from .autodedent import autodedent
 from .private._private_helpers import encode_image, wrap_stream_and_count, async_wrap_stream_and_count
 from .types import *
 from datetime import datetime
+from openai.types.chat.chat_completion import ChatCompletion
 from typing import List, Optional, Union, Callable, Any, Generator, AsyncGenerator
 from typing_extensions import Unpack
+from openai import Stream, AsyncStream
 import json
 import logging
 import openai
@@ -125,7 +127,8 @@ class Chain:
             return None
 
         if stream and isinstance(completion, Stream):
-            return wrap_stream_and_count(completion, model, self._add_token_count, plain_text_stream)
+            return wrap_stream_and_count(
+                completion, model, self._add_token_count, plain_text_stream)  # type: ignore
 
         return self._post_completion(completion, model, json_schema)
 
@@ -152,7 +155,8 @@ class Chain:
             return None
 
         if stream and isinstance(completion, AsyncStream):
-            return async_wrap_stream_and_count(completion, model, self._add_token_count, plain_text_stream)
+            return async_wrap_stream_and_count(
+                completion, model, self._add_token_count, plain_text_stream)  # type: ignore
 
         return self._post_completion(completion, model, json_schema)
 
@@ -253,7 +257,7 @@ class Chain:
             )
         return self
 
-    def setup_pull(self, asynchronous: bool = False, json_schema: Optional[dict[Any, Any]] = None, **params: Unpack[RequestParams]):
+    def setup_pull(self, asynchronous: bool = False, json_schema: Optional[dict[Any, Any]] = None, **params: Unpack[RequestParams]) -> Any:
         params['model'] = params.get('model', self.model)
 
         if len(self.user_prompt) == 0:
