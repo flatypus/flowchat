@@ -1,18 +1,19 @@
-from typing import Callable
+from typing import Callable, Generator, AsyncGenerator
+from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from ..types import *
 from io import BytesIO
 from PIL.Image import Image as PILImage
 import base64
 
 
-def encode_image(image: PILImage, format_type: str = "PNG"):
+def encode_image(image: PILImage, format_type: str = "PNG") -> str:
     buffered = BytesIO()
     image.save(buffered, format=format_type)
     img_str = base64.b64encode(buffered.getvalue())
     return f"data:image/png;base64,{img_str.decode('utf-8')}"
 
 
-def wrap_stream_and_count(generator: StreamCompletion, model: str, callback: Callable[[int, int, str], None], plain_text_stream: bool = False):
+def wrap_stream_and_count(generator: StreamCompletion, model: str, callback: Callable[[int, int, str], None], plain_text_stream: bool = False) -> Generator[str | ChatCompletionChunk | None, None, None]:
     for response in generator:
         if len(response.choices) == 0:
             usage = response.usage
@@ -23,7 +24,7 @@ def wrap_stream_and_count(generator: StreamCompletion, model: str, callback: Cal
         yield content if plain_text_stream else response
 
 
-async def async_wrap_stream_and_count(generator: AsyncStreamCompletion, model: str, callback: Callable[[int, int, str], None], plain_text_stream: bool = False):
+async def async_wrap_stream_and_count(generator: AsyncStreamCompletion, model: str, callback: Callable[[int, int, str], None], plain_text_stream: bool = False) -> AsyncGenerator[str | ChatCompletionChunk | None, None]:
     async for response in generator:
         if len(response.choices) == 0:
             usage = response.usage
