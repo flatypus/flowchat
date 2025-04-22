@@ -2,10 +2,10 @@ from .autodedent import autodedent
 from .private._private_helpers import encode_image, wrap_stream_and_count, async_wrap_stream_and_count
 from .types import *
 from datetime import datetime
-from openai.types.chat.chat_completion import ChatCompletion
+from openai import Stream, AsyncStream
 from typing import List, Optional, Union, Callable, Any, Generator, AsyncGenerator
 from typing_extensions import Unpack
-from openai import Stream, AsyncStream
+import aisuite as ai # type: ignore
 import json
 import logging
 import openai
@@ -19,38 +19,39 @@ logging.basicConfig(
 
 
 class Chain:
-    def __init__(self, model: str, api_key: str = "", environ_key: str = "OPENAI_API_KEY") -> None:
+    def __init__(self, model: str, api_key: str = "", provider: str = "openai") -> None:
         super().__init__()
 
         if type(model) is not str:
             raise TypeError(
                 f"Model argument must be a string, not {type(model)}"
             )
+        
+        environ_key = f"{provider.upper()}_API_KEY"
 
+        if api_key == "" and environ_key in os.environ:
+            api_key = os.environ[environ_key]
+            
         if api_key != "" and type(api_key) is not str:
             raise TypeError(
                 f"API key argument must be a string, not {type(api_key)}"
             )
 
-        if type(environ_key) is not str:
-            raise TypeError(
-                f"Environment key argument must be a string, not {type(environ_key)}"
-            )
-
-        if api_key == "":
-            env_api_key = os.environ.get(environ_key)
-            if env_api_key is not None:
-                api_key = env_api_key
-
         if not api_key:
             raise ValueError(
-                "OpenAI API key not found. Please set the OPENAI_API_KEY environment variable, "
+                "API key not found. Please set an environment variable, "
                 "pass in an api_key parameter, or set the environ_key parameter to the environment "
                 "variable that contains your API key."
             )
-        self.client = openai.Client(api_key=api_key)
-        self.asyncClient = openai.AsyncClient(api_key=api_key)
-        self.model = model
+
+        if provider == "openai":
+            self.client = openai.Client(api_key=api_key)
+            self.asyncClient = openai.AsyncClient(api_key=api_key)
+        else:
+            self.client = ai.Client(provider_configs={provider: {"api_key": api_key}})
+            
+        self.model = model if ":" in model else f"{provider}:{model}"
+        self.provider = provider
         self.system: Message | None = None
         self.user_prompt: List[Message] = []
         self.model_response = None
@@ -77,31 +78,33 @@ class Chain:
         return await self.asyncClient.chat.completions.create(**params)  # type: ignore
 
     def _post_completion(self, completion: CreateResponse, model: str, json_schema: Optional[dict[Any, Any]] = None) -> Any:
-        if isinstance(completion, ChatCompletion):
-            self.raw_model_response = completion
-            message = completion.choices[0].message.content
-            if message is None:
-                raise Exception("Response was empty. Please try again.")
+        self.raw_model_response = completion
+        message = completion.choices[0].message.content
+        
+        print("Message: ", message)
+        
+        if message is None:
+            raise Exception("Response was empty. Please try again.")
 
-            if not json_schema is None:
-                open_bracket = message.find('{')
-                close_bracket = message.rfind('}')
-                message = message[open_bracket:close_bracket+1]
-                try:
-                    message = json.loads(message)
-                except json.JSONDecodeError:
-                    raise Exception(
-                        "Response was not in the expected JSON format. Please try again. Check that you haven't accidentally lowered the max_tokens parameter so that the response is truncated."
-                    )
-
-            if completion.usage is not None:
-                self._add_token_count(
-                    completion.usage.prompt_tokens,
-                    completion.usage.completion_tokens,
-                    model
+        if not json_schema is None:
+            open_bracket = message.find('{')
+            close_bracket = message.rfind('}')
+            message = message[open_bracket:close_bracket+1]
+            try:
+                message = json.loads(message)
+            except json.JSONDecodeError:
+                raise Exception(
+                    "Response was not in the expected JSON format. Please try again. Check that you haven't accidentally lowered the max_tokens parameter so that the response is truncated."
                 )
 
-            return message
+        if self.provider == "openai" and completion.usage is not None:
+            self._add_token_count(
+                completion.usage.prompt_tokens,
+                completion.usage.completion_tokens,
+                model
+            )
+
+        return message
 
     def _ask(
         self,
@@ -143,6 +146,9 @@ class Chain:
     ) -> Any:
         """Ask a question to the chatbot with a system prompt and return the response."""
         model = params.get("model", self.model)
+
+        if self.provider != "openai":
+            raise ValueError("Asynchronous requests are only supported for OpenAI's API.")
 
         messages = [
             system,
@@ -266,8 +272,10 @@ class Chain:
             )
 
         if json_schema is not None:
-            params['response_format'] = {'type': 'json_object'}
-            params['model'] = 'gpt-4-turbo'
+            if self.provider == "openai":
+                params['response_format'] = {'type': 'json_object'}
+                params['model'] = 'openai:gpt-4-turbo'
+                
             self.user_prompt[-1]['content'] += autodedent(
                 "You must respond in the following example JSON format. Remember to enclose the entire JSON object in curly braces:",
                 json.dumps(json_schema, indent=4)
